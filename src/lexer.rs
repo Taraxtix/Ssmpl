@@ -5,8 +5,14 @@ use self::op::{Loc, Op, OpType};
 pub mod op;
 
 pub struct Token {
-    content: String,
+    pub content: String,
     loc: Loc,
+}
+
+fn end_of_token(c: char) -> bool{
+    c.is_ascii_whitespace()
+        || c == '('
+        || c == ')'
 }
 
 impl Token {
@@ -66,7 +72,7 @@ impl<'a> Lexer<'a> {
     }
 
     fn trim_left(&mut self) {
-        while !self.end() && self.content[self.cursor].is_ascii_whitespace(){
+        while !self.end() && end_of_token(self.content[self.cursor]){
             if self.content[self.cursor] == '\n' {
                 self.line += 1;
                 self.line_start = self.cursor;
@@ -81,12 +87,26 @@ impl Iterator for Lexer<'_> {
 
     fn next(&mut self) -> Option<Self::Item> {
         self.trim_left();
+
+        if !self.end() && self.content[self.cursor] == '#' {
+            self.cursor += 1;
+            while !self.end() && self.content[self.cursor] != '#' && self.content[self.cursor] != '\n' {
+                if self.content[self.cursor] == '\n' {
+                    self.line += 1;
+                    self.line_start = self.cursor;
+                }
+                self.cursor += 1;
+            }
+            self.cursor += 1;
+            self.trim_left();   
+        }
+        
         if self.end() {
             return None;
         }
         let start = self.cursor;
-
-        while !self.end() && !self.content[self.cursor].is_whitespace(){
+        
+        while !self.end() && !end_of_token(self.content[self.cursor]){
             self.cursor += 1;
         }
 

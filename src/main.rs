@@ -106,7 +106,10 @@ fn main() {
             },
         }.chars().collect();
 
-    let ops: Vec<Op> = Lexer::new(filepath.clone(), file_content.as_slice()).map(|token| token.to_op()).collect();
+    let ops: Vec<Op> = Lexer::new(filepath.clone(), file_content.as_slice()).filter(|token|{
+        token.content.as_str() != "(" &&
+        token.content.as_str() != ")"
+    }).map(|token| token.to_op()).collect();
 
 
     match option {

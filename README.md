@@ -7,9 +7,23 @@ Those goals will surely change during the project.
 - [X] Simulated
 - [X] Compiled
 - [ ] Turing complete
+- [ ] Statically typed (with compilation time type checking)
 - [ ] Self-Hosted
 
 ## Documentation
+
+### Random Informations
+- Parentheses are ignored
+
+### --Comments--
+Comments will use `#` as a delimiter.
+```
+# This is a line comment
+Code Here # This is an inline comment # Code here
+```
+
+Note that for an inline comment to start, a space is mandatory after the last operation.
+For now it is impossible to use `#` inside of a comment (I think about making it possible by escaping it)
 
 ### --Push--
 To push a digit to the stack you just have to write the digit as is.
