@@ -18,7 +18,9 @@ pub enum OpType {
     Minus,
     Plus,
     Mult,
-    Div, 
+    Div,
+    Inc,
+    Dec,
 }
 
 impl Display for OpType{
@@ -30,6 +32,8 @@ impl Display for OpType{
             OpType::Minus => "Minus".fmt(f),
             OpType::Mult => "Mult".fmt(f),
             OpType::Div => "Div".fmt(f),
+            OpType::Inc => "Inc".fmt(f),
+            OpType::Dec => "Dec".fmt(f),
         }
     }
 }
@@ -75,6 +79,14 @@ impl Op {
                 stack.push(a / b);
                 stack.push(a % b)
             }
+            OpType::Inc => {
+                let a = self.pop(stack);
+                stack.push(a + 1)
+            }
+            OpType::Dec => {
+                let a = self.pop(stack);
+                stack.push(a - 1)
+            }
         }
     }
 
@@ -118,6 +130,18 @@ impl Op {
                 output_asm.write("\tidiv\trbx\n".as_bytes())?;
                 output_asm.write("\tpush\trax\n".as_bytes())?;
                 output_asm.write("\tpush\trdx\n".as_bytes())
+            }
+            OpType::Inc => {
+                output_asm.write("\t;; Inc\n".as_bytes())?;
+                output_asm.write("\tpop \trax\n".as_bytes())?;
+                output_asm.write("\tinc \trax\n".as_bytes())?;
+                output_asm.write("\tpush\trax\n".as_bytes())
+            }
+            OpType::Dec => {
+                output_asm.write("\t;; Dec\n".as_bytes())?;
+                output_asm.write("\tpop \trax\n".as_bytes())?;
+                output_asm.write("\tdec \trax\n".as_bytes())?;
+                output_asm.write("\tpush\trax\n".as_bytes())
             }
         }
     }

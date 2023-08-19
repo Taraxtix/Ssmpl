@@ -21,6 +21,8 @@ impl Token {
                 "+" => op_type = OpType::Plus,
                 "*" => op_type = OpType::Mult,
                 "/" => op_type = OpType::Div,
+                "++" => op_type = OpType::Inc,
+                "--" => op_type = OpType::Dec,
                 _ => {
                     eprintln!("ERROR: {}: Unknow word: `{}`", self.loc, self.content);
                     exit(1);
@@ -78,15 +80,7 @@ impl Iterator for Lexer<'_> {
         }
         let start = self.cursor;
 
-        if self.content[self.cursor].is_alphabetic() {
-            while !self.end() && self.content[self.cursor].is_alphanumeric(){
-                self.cursor += 1;
-            }
-        } else if self.content[self.cursor].is_ascii_digit() {
-            while !self.end() && self.content[self.cursor].is_ascii_digit() {
-                self.cursor += 1;
-            }
-        } else {
+        while !self.end() && !self.content[self.cursor].is_whitespace(){
             self.cursor += 1;
         }
 
