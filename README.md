@@ -67,3 +67,50 @@ push(a + 1);
 let a = pop();
 push(a - 1);
 ```
+### --Stack Manipulation--
+#### --Drop--
+`drop`
+```
+pop();
+```
+#### --2Drop--
+`2drop`
+```
+pop();
+pop();
+```
+#### --Swap--
+`swap`
+```
+let a = pop();
+let b = pop();
+push(a);
+push(b);
+```
+#### --Over--
+`over`
+```
+let a = pop();
+let b = pop();
+push(b);
+push(a);
+push(b);
+```
+#### --2Over--
+`2over`
+```
+let a = pop();
+let b = pop();
+let c = pop();
+push(c);
+push(b);
+push(a);
+push(c);
+```
+#### --Dup--
+`dup`
+```
+let a = pop();
+push(a);
+push(a);
+```

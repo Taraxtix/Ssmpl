@@ -23,6 +23,12 @@ impl Token {
                 "/" => op_type = OpType::Div,
                 "++" => op_type = OpType::Inc,
                 "--" => op_type = OpType::Dec,
+                "drop" => op_type = OpType::Drop,
+                "2drop" => op_type = OpType::Drop2,
+                "swap" => op_type = OpType::Swap,
+                "over" => op_type = OpType::Over,
+                "2over" => op_type = OpType::Over2,
+                "dup" => op_type = OpType::Dup,
                 _ => {
                     eprintln!("ERROR: {}: Unknow word: `{}`", self.loc, self.content);
                     exit(1);
