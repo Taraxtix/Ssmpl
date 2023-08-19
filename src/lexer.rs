@@ -17,6 +17,10 @@ impl Token {
         } else {
             match self.content.as_str() {
                 "dump" => op_type = OpType::Dump,
+                "-" => op_type = OpType::Minus,
+                "+" => op_type = OpType::Plus,
+                "*" => op_type = OpType::Mult,
+                "/" => op_type = OpType::Div,
                 _ => {
                     eprintln!("ERROR: {}: Unknow word: `{}`", self.loc, self.content);
                     exit(1);
@@ -37,7 +41,7 @@ impl Display for Token {
 }
 
 pub struct Lexer<'a>{
-    file_path: &'static str,
+    file_path: String,
     line: usize,
     line_start: usize,
     cursor: usize,
@@ -45,7 +49,7 @@ pub struct Lexer<'a>{
 }
 
 impl<'a> Lexer<'a> {
-    pub fn new(file_path: &'static str, content: &'a [char]) -> Self {
+    pub fn new(file_path: String, content: &'a [char]) -> Self {
         Self { file_path, line: 0, line_start: 0, cursor: 0, content }
     }
 
@@ -88,7 +92,7 @@ impl Iterator for Lexer<'_> {
 
         Some(Token {
             loc: Loc{
-                file_path: self.file_path,
+                file_path: self.file_path.clone(),
                 line: self.line,
                 col: self.cursor - self.line_start,
             },
