@@ -1,9 +1,6 @@
-
 use std::{fs::{OpenOptions, self}, process::{exit, Command}, env::args, io::Write};
 
-use lexer::op::Op;
-
-use crate::lexer::Lexer;
+use crate::lexer::{Lexer, Token, to_op, op::{simulate, compile}};
 
 pub mod lexer;
 
@@ -106,18 +103,17 @@ fn main() {
             },
         }.chars().collect();
 
-    let ops: Vec<Op> = Lexer::new(filepath.clone(), file_content.as_slice()).filter(|token|{
+    let tokens: Vec<Token> = Lexer::new(filepath.clone(), file_content.as_slice()).filter(|token|{
         token.content.as_str() != "(" &&
         token.content.as_str() != ")"
-    }).map(|token| token.to_op()).collect();
+    }).collect();
+    let ops = to_op(tokens);
 
 
     match option {
         "sim" => {
             let mut stack = vec![];
-            for op in ops {
-                op.simulate(&mut stack)
-            }
+            simulate(ops, &mut stack);
         }
         "com" => {
             let dot_index = filepath.find('.');
@@ -152,9 +148,7 @@ fn main() {
             };
 
             output_asm.write(ASM_HEADER.as_bytes()).expect("ERROR: Could not write to file");
-            for op in ops {
-                op.compile(&mut output_asm).expect("ERROR: Could not write to file");
-            }
+            compile(ops, &mut output_asm).expect("ERROR: Could not write to file");    
             output_asm.write(ASM_FOOTER.as_bytes()).expect("ERROR: Could not write to file");
 
             println!("INFO: Running `nasm -f elf64 {file_basename}.asm` ...");

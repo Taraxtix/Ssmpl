@@ -15,13 +15,16 @@ fn end_of_token(c: char) -> bool{
         || c == ')'
 }
 
-impl Token {
-    pub fn to_op(self) -> Op {
+
+pub fn to_op(tokens: Vec<Token>) -> Vec<Op> {
+    let mut ip: usize = 0;
+    let mut ops: Vec<Op> = vec![];
+    while let Some(tok) = tokens.get(ip){
         let op_type: OpType;
-        if let Ok(val) = self.content.parse::<u64>(){
+        if let Ok(val) = tok.content.parse::<u64>(){
             op_type = OpType::Push(val);
         } else {
-            match self.content.as_str() {
+            match tok.content.as_str() {
                 "dump" => op_type = OpType::Dump,
                 "-" => op_type = OpType::Minus,
                 "+" => op_type = OpType::Plus,
@@ -36,16 +39,18 @@ impl Token {
                 "2over" => op_type = OpType::Over2,
                 "dup" => op_type = OpType::Dup,
                 _ => {
-                    eprintln!("ERROR: {}: Unknow word: `{}`", self.loc, self.content);
+                    eprintln!("ERROR: {}: Unknow word: `{}`", tok.loc, tok.content);
                     exit(1);
                 }
             }
         }
-        Op {
-            op_type,
-            loc: self.loc
-        }
+        let op = Op{
+            op_type, loc: tok.loc.clone()
+        };
+        ops.push(op);
+        ip += 1;
     }
+    return ops;
 }
 
 impl Display for Token {
