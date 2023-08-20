@@ -12,6 +12,7 @@ impl Display for Loc {
     }
 }
 
+#[derive(Clone)]
 pub enum OpType {
     Push(u64),
     Dump,
@@ -27,6 +28,17 @@ pub enum OpType {
     Over,
     Over2,
     Dup,
+    If,
+    While,
+    Do(u64),
+    Else(u64),
+    End(u64),
+    Equal,
+    NEqual,
+    Greater,
+    GreaterE,
+    Less,
+    LessE,
 }
 
 impl Display for OpType{
@@ -46,6 +58,17 @@ impl Display for OpType{
             OpType::Over => "Over".fmt(f),
             OpType::Over2 => "2Over".fmt(f),
             OpType::Dup => "Dup".fmt(f),
+            OpType::If => "If".fmt(f),
+            OpType::While => "While".fmt(f),
+            OpType::Do(_) => "Do".fmt(f),
+            OpType::Else(_) => "Else".fmt(f),
+            OpType::End(_) => "End".fmt(f),
+            OpType::Equal => "Equal".fmt(f),
+            OpType::NEqual => "NEqual".fmt(f),
+            OpType::Greater => "Greater".fmt(f),
+            OpType::GreaterE => "GreaterE".fmt(f),
+            OpType::Less => "Less".fmt(f),
+            OpType::LessE => "LessE".fmt(f),
         }
     }
 }
@@ -135,6 +158,43 @@ pub fn simulate(ops: Vec<Op>, stack: &mut Vec<u64>) {
                 let a = op.pop(stack);
                 stack.push(a);
                 stack.push(a);
+            }
+            OpType::If | OpType::While => (),
+            OpType::Do(address) => {
+                if op.pop(stack) == 0{
+                    ip = address as usize- 1;
+                }
+            }
+            OpType::Else(address) | OpType::End(address) => ip = address as usize- 1,
+            OpType::Equal => {
+                let b = op.pop(stack);
+                let a = op.pop(stack);
+                stack.push((a == b) as u64)
+            }
+            OpType::NEqual => {
+                let b = op.pop(stack);
+                let a = op.pop(stack);
+                stack.push((a != b) as u64)
+            }
+            OpType::Greater => {
+                let b = op.pop(stack);
+                let a = op.pop(stack);
+                stack.push((a > b) as u64)
+            }
+            OpType::GreaterE => {
+                let b = op.pop(stack);
+                let a = op.pop(stack);
+                stack.push((a >= b) as u64)
+            }
+            OpType::Less => {
+                let b = op.pop(stack);
+                let a = op.pop(stack);
+                stack.push((a < b) as u64)
+            }
+            OpType::LessE => {
+                let b = op.pop(stack);
+                let a = op.pop(stack);
+                stack.push((a <= b) as u64)
             }
         }
         ip += 1;
@@ -250,8 +310,88 @@ pub fn compile(ops: Vec<Op>, output_asm: &mut std::fs::File) -> Result<usize, Er
                 output_asm.write("\tpush\trax\n".as_bytes())?;
                 output_asm.write("\tpush\trax\n".as_bytes())?;
             }
+            OpType::If | OpType::While => (),
+            OpType::Do(address) => {
+                output_asm.write(format!("IP_{ip}:\n").as_bytes())?;
+                output_asm.write("\t;; Do\n".as_bytes())?;
+                output_asm.write("\tpop \trax\n".as_bytes())?;
+                output_asm.write("\ttest\trax, rax\n".as_bytes())?;
+                output_asm.write(format!("\tje  \tIP_{address}\n").as_bytes())?;
+            }
+            OpType::Else(address) | OpType::End(address) => {
+                output_asm.write(format!("IP_{ip}:\n").as_bytes())?;
+                output_asm.write("\t;; Else/End\n".as_bytes())?;
+                output_asm.write(format!("\tjmp \tIP_{address}\n").as_bytes())?;
+            }
+            OpType::Equal => {
+                output_asm.write(format!("IP_{ip}:\n").as_bytes())?;
+                output_asm.write("\t;; Equal\n".as_bytes())?;
+                output_asm.write("\tpop \trbx\n".as_bytes())?;
+                output_asm.write("\tpop \trax\n".as_bytes())?;
+                output_asm.write("\tcmp \trax, rbx\n".as_bytes())?;
+                output_asm.write("\tmov \trbx, 1\n".as_bytes())?;
+                output_asm.write("\tmov\trax, 0\n".as_bytes())?;
+                output_asm.write("\tcmove\trax, rbx\n".as_bytes())?;
+                output_asm.write("\tpush\trax\n".as_bytes())?;
+            }
+            OpType::NEqual => {
+                output_asm.write(format!("IP_{ip}:\n").as_bytes())?;
+                output_asm.write("\t;; NEqual\n".as_bytes())?;
+                output_asm.write("\tpop \trbx\n".as_bytes())?;
+                output_asm.write("\tpop \trax\n".as_bytes())?;
+                output_asm.write("\tcmp \trax, rbx\n".as_bytes())?;
+                output_asm.write("\tmov \trbx, 1\n".as_bytes())?;
+                output_asm.write("\tmov\trax, 0\n".as_bytes())?;
+                output_asm.write("\tcmovne\trax, rbx\n".as_bytes())?;
+                output_asm.write("\tpush\trax\n".as_bytes())?;
+            }
+            OpType::Greater => {
+                output_asm.write(format!("IP_{ip}:\n").as_bytes())?;
+                output_asm.write("\t;; Greater\n".as_bytes())?;
+                output_asm.write("\tpop \trbx\n".as_bytes())?;
+                output_asm.write("\tpop \trax\n".as_bytes())?;
+                output_asm.write("\tcmp \trax, rbx\n".as_bytes())?;
+                output_asm.write("\tmov \trbx, 1\n".as_bytes())?;
+                output_asm.write("\tmov\trax, 0\n".as_bytes())?;
+                output_asm.write("\tcmovg\trax, rbx\n".as_bytes())?;
+                output_asm.write("\tpush\trax\n".as_bytes())?;
+            }
+            OpType::GreaterE => {
+                output_asm.write(format!("IP_{ip}:\n").as_bytes())?;
+                output_asm.write("\t;; GreaterE\n".as_bytes())?;
+                output_asm.write("\tpop \trbx\n".as_bytes())?;
+                output_asm.write("\tpop \trax\n".as_bytes())?;
+                output_asm.write("\tcmp \trax, rbx\n".as_bytes())?;
+                output_asm.write("\tmov \trbx, 1\n".as_bytes())?;
+                output_asm.write("\tmov\trax, 0\n".as_bytes())?;
+                output_asm.write("\tcmovge\trax, rbx\n".as_bytes())?;
+                output_asm.write("\tpush\trax\n".as_bytes())?;
+            }
+            OpType::Less => {
+                output_asm.write(format!("IP_{ip}:\n").as_bytes())?;
+                output_asm.write("\t;; Less\n".as_bytes())?;
+                output_asm.write("\tpop \trbx\n".as_bytes())?;
+                output_asm.write("\tpop \trax\n".as_bytes())?;
+                output_asm.write("\tcmp \trax, rbx\n".as_bytes())?;
+                output_asm.write("\tmov \trbx, 1\n".as_bytes())?;
+                output_asm.write("\tmov\trax, 0\n".as_bytes())?;
+                output_asm.write("\tcmovl\trax, rbx\n".as_bytes())?;
+                output_asm.write("\tpush\trax\n".as_bytes())?;
+            }
+            OpType::LessE => {
+                output_asm.write(format!("IP_{ip}:\n").as_bytes())?;
+                output_asm.write("\t;; LessE\n".as_bytes())?;
+                output_asm.write("\tpop \trbx\n".as_bytes())?;
+                output_asm.write("\tpop \trax\n".as_bytes())?;
+                output_asm.write("\tcmp \trax, rbx\n".as_bytes())?;
+                output_asm.write("\tmov \trbx, 1\n".as_bytes())?;
+                output_asm.write("\tmov\trax, 0\n".as_bytes())?;
+                output_asm.write("\tcmovle\trax, rbx\n".as_bytes())?;
+                output_asm.write("\tpush\trax\n".as_bytes())?;
+            }
         }
         ip += 1;
     }
-    Ok(ip)
+    output_asm.write(format!("IP_{ip}:\n").as_bytes())?;
+    output_asm.write(format!("\t;; Exit").as_bytes())
 }

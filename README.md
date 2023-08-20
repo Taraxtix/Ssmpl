@@ -128,3 +128,73 @@ let a = pop();
 push(a);
 push(a);
 ```
+### --Control flow--
+In all control flow, the `condition` part must add exactly one value to the stack without modifying the rest of the stack.
+This value will be consider `false` if equal to zero and `true` otherwise
+#### --If--
+```
+if # condition # do
+    # Execute here if condition is true #
+end
+```
+
+#### --While--
+Using a while, the inside block of code must return a stack containing the same amout of value as before the while. 
+```
+while # condition # do
+    # Execute here while condition is true #
+end
+```
+
+#### --Else--
+using a else block, the if block and the else block must alter the stack the same way. 
+```
+if # condition # do
+    # Execute here if condition is true #
+else
+    # Execute here if condition is false #
+end
+```
+### --Comparison--
+#### --Equal--
+`==`
+```
+let b = pop()
+let a = pop()
+push(a == b)
+```
+#### --Not Equal--
+`!=`
+```
+let b = pop()
+let a = pop()
+push(a != b)
+```
+#### --Greater--
+`>`
+```
+let b = pop()
+let a = pop()
+push(a > b)
+```
+#### --Greater or Equal--
+`>=`
+```
+let b = pop()
+let a = pop()
+push(a >= b)
+```
+#### --Less--
+`<`
+```
+let b = pop()
+let a = pop()
+push(a < b)
+```
+#### --Less or Equal--
+`<=`
+```
+let b = pop()
+let a = pop()
+push(a <= b)
+```

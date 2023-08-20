@@ -19,6 +19,7 @@ fn end_of_token(c: char) -> bool{
 pub fn to_op(tokens: Vec<Token>) -> Vec<Op> {
     let mut ip: usize = 0;
     let mut ops: Vec<Op> = vec![];
+    let mut cf: Vec<(OpType, usize)> = vec![];
     while let Some(tok) = tokens.get(ip){
         let op_type: OpType;
         if let Ok(val) = tok.content.parse::<u64>(){
@@ -38,6 +39,40 @@ pub fn to_op(tokens: Vec<Token>) -> Vec<Op> {
                 "over" => op_type = OpType::Over,
                 "2over" => op_type = OpType::Over2,
                 "dup" => op_type = OpType::Dup,
+                "if" => {
+                    op_type = OpType::If;
+                    cf.push((op_type.clone(), ip));
+                }
+                "while" => {
+                    op_type = OpType::While;
+                    cf.push((op_type.clone(), ip));
+                }
+                "do" => {
+                    op_type = OpType::Do(0);
+                    cf.push((op_type.clone(), ip));
+                }
+                "else" => {
+                    op_type = OpType::Else(0);
+                    let op_do = cf.pop().unwrap();
+                    ops.get_mut(op_do.1).unwrap().op_type = OpType::Do(ip as u64+ 1);
+                    cf.push((op_type.clone(), ip));
+                }
+                "end" => {
+                    let op_do_or_else = cf.pop().unwrap();
+                    ops.get_mut(op_do_or_else.1).unwrap().op_type = OpType::Do(ip as u64+ 1);
+                    let op_if_or_while = cf.pop().unwrap();
+                    match op_if_or_while.0 {
+                        OpType::If => op_type = OpType::End(ip as u64 + 1),
+                        OpType::While => op_type = OpType::End(op_if_or_while.1 as u64 + 1),
+                        _ => unreachable!(),
+                    }
+                }
+                "==" => op_type = OpType::Equal,
+                "!=" => op_type = OpType::NEqual,
+                ">" => op_type = OpType::Greater,
+                ">=" => op_type = OpType::GreaterE,
+                "<" => op_type = OpType::Less,
+                "<=" => op_type = OpType::LessE,
                 _ => {
                     eprintln!("ERROR: {}: Unknow word: `{}`", tok.loc, tok.content);
                     exit(1);
