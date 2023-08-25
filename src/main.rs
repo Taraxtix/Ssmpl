@@ -1,6 +1,6 @@
 use std::{fs::{OpenOptions, self}, process::{exit, Command}, env::args, io::Write};
 
-use crate::lexer::{Lexer, Token, to_op, op::{simulate, compile}};
+use crate::lexer::{Lexer, Token, to_op, op::{simulate, compile, type_check}};
 
 pub mod lexer;
 
@@ -108,7 +108,7 @@ fn main() {
         token.content.as_str() != ")"
     }).collect();
     let ops = to_op(tokens);
-
+    type_check(&ops);
 
     match option {
         "sim" => {

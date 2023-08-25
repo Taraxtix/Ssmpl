@@ -1,4 +1,5 @@
 use std::{fmt::Display, process::exit, io::{Error, Write}};
+
 #[derive(Clone)]
 pub struct Loc{
     pub file_path: String,
@@ -87,6 +88,273 @@ impl Op {
                 exit(1);
             },
         }
+    }
+}
+
+
+#[derive(Clone)]
+enum DataType {
+    Int,
+    Ptr,
+    Bool,
+}
+
+impl Display for DataType {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            DataType::Int => "INT".fmt(f),
+            DataType::Ptr => "PTR".fmt(f),
+            DataType::Bool => "BOOL".fmt(f),
+        }
+    }
+}
+
+fn wrong_arg(op: &Op, expected :&str, got :Vec<Option<DataType>>) -> ! {
+    eprintln!("ERROR: {}: Wrong argument for {}.", op.loc, op.op_type);
+    eprint!("Expected: {expected}");
+    eprint!("Got     : ");
+    for dt in got.as_slice()[..expected.len()-1].iter(){
+        if let Some(dt) = dt {
+            eprint!("{dt}, ");
+        } else{
+            eprint!("None, ")
+        }
+    }
+    if let Some(dt) = got.last().unwrap() {
+        eprint!("{dt}");
+    } else{
+        eprint!("None")
+    }
+    exit(1)
+}
+
+fn stack_equals(stack1: &Vec<DataType>, stack2: &Vec<DataType>) -> bool{
+    if stack1.len() != stack2.len(){
+        false
+    }else{
+        for i in 0..stack1.len(){
+            if stack1.get(i).unwrap().to_owned() as u8 != stack2.get(i).unwrap().to_owned() as u8{
+                return false;
+            }
+        }
+        true
+    }
+}
+
+pub fn type_check(ops: &Vec<Op>){
+    let mut ip: usize = 0;
+    let mut stack: Vec<DataType> = vec![];
+    let mut stack_snapshot: Vec<Vec<DataType>> = vec![];
+    while let Some(op) = ops.get(ip){
+        match op.clone().op_type {
+            OpType::Push(_) => stack.push(DataType::Int),
+            OpType::Dump => {
+                let a = stack.pop();
+                match a {
+                    Some(_) => { stack.pop(); }
+                    _ => wrong_arg(op, "*", vec![a]),
+                }
+            }
+            OpType::Minus => {
+                let b = stack.pop();
+                let a = stack.pop();
+                match b {
+                    Some(DataType::Int) => match a {
+                        Some(DataType::Int) => stack.push(DataType::Int),
+                        Some(DataType::Ptr) => stack.push(DataType::Ptr),
+                        _ => wrong_arg(op, "INT, INT|PTR", vec![b, a]),
+                    },
+                    _ => wrong_arg(op, "INT, INT|PTR", vec![b, a]),
+                }
+            }
+            OpType::Plus => {
+                let b = stack.pop();
+                let a = stack.pop();
+                match b {
+                    Some(DataType::Int) => match a {
+                        Some(DataType::Int) => stack.push(DataType::Int),
+                        Some(DataType::Ptr) => stack.push(DataType::Ptr),
+                        _ => wrong_arg(op, "INT, INT|PTR", vec![b, a]),
+                    },
+                    _ => wrong_arg(op, "INT, INT|PTR", vec![b, a]),
+                }
+            }
+            OpType::Mult => {
+                let b = stack.pop();
+                let a = stack.pop();
+                match b {
+                    Some(DataType::Int) => match a {
+                        Some(DataType::Int) => stack.push(DataType::Int),
+                        _ => wrong_arg(op, "INT, INT", vec![b, a]),
+                    },
+                    _ => wrong_arg(op, "INT, INT", vec![b, a]),
+                }
+            }
+            OpType::Div => {
+                let b = stack.pop();
+                let a = stack.pop();
+                match b {
+                    Some(DataType::Int) => match a {
+                        Some(DataType::Int) => stack.push(DataType::Int),
+                        _ => wrong_arg(op, "INT, INT", vec![b, a]),
+                    },
+                    _ => wrong_arg(op, "INT, INT", vec![b, a]),
+                }
+            }
+            OpType::Inc => {
+                let a = stack.pop();
+                match a {
+                    Some(DataType::Int) => stack.push(DataType::Int),
+                    Some(DataType::Ptr) => stack.push(DataType::Ptr),
+                    _ => wrong_arg(op, "INT|PTR", vec![a]),
+                }
+            }
+            OpType::Dec => {
+                let a = stack.pop();
+                match a {
+                    Some(DataType::Int) => stack.push(DataType::Int),
+                    Some(DataType::Ptr) => stack.push(DataType::Ptr),
+                    _ => wrong_arg(op, "INT|PTR", vec![a]),
+                }
+            }
+            OpType::Drop => {
+                let a = stack.pop();
+                match a {
+                    Some(_) => { stack.pop(); }
+                    _ => wrong_arg(op, "*", vec![a]),
+                }
+            }
+            OpType::Drop2 => {
+                let b = stack.pop();
+                let a = stack.pop();
+                match a {
+                    Some(_) => match b {
+                        Some(_) => { stack.pop(); }
+                        _ => wrong_arg(op, "*, *", vec![a, b]),
+                    },
+                    _ => wrong_arg(op, "*, *", vec![a, b]),
+                }
+            }
+            OpType::Swap => {
+                let b = stack.pop();
+                let a = stack.pop();
+                match a {
+                    Some(_) => match b {
+                        Some(_) => {
+                            stack.push(b.unwrap());
+                            stack.push(a.unwrap());
+                        }
+                        _ => wrong_arg(op, "*, *", vec![a, b]),
+                    },
+                    _ => wrong_arg(op, "*, *", vec![a, b]),
+                }
+            }
+            OpType::Over => {
+                let b = stack.pop();
+                let a = stack.pop();
+                match a {
+                    Some(_) => match b {
+                        Some(_) => {
+                            stack.push(a.clone().unwrap());
+                            stack.push(b.unwrap());
+                            stack.push(a.unwrap());
+                        }
+                        _ => wrong_arg(op, "*, *", vec![a, b]),
+                    },
+                    _ => wrong_arg(op, "*, *", vec![a, b]),
+                }
+            },
+            OpType::Over2 => {
+                let c = stack.pop();
+                let b = stack.pop();
+                let a = stack.pop();
+                match a {
+                    Some(_) => match b {
+                        Some(_) => match b {
+                        Some(_) => {
+                            stack.push(a.clone().unwrap());
+                            stack.push(b.unwrap());
+                            stack.push(c.unwrap());
+                            stack.push(a.unwrap());
+                        }
+                        _ => wrong_arg(op, "*, *, *", vec![a, b, c]),
+                    },
+                        _ => wrong_arg(op, "*, *, *", vec![a, b, c]),
+                    },
+                    _ => wrong_arg(op, "*, *, *", vec![a, b, c]),
+                }
+            },
+            OpType::Dup => {
+                let a = stack.pop();
+                match a {
+                    Some(_) => stack.push(a.unwrap()),
+                    _ => wrong_arg(op, "INT|PTR", vec![a]),
+                }
+            }
+            OpType::If | OpType::While => {
+                let mut snapshot = stack.clone();
+                snapshot.push(DataType::Bool);
+                stack_snapshot.push(snapshot);
+            }
+            OpType::Do(_) => {
+                let snapshot = stack_snapshot.pop().unwrap();
+                if !stack_equals(&stack, &snapshot){
+                    eprintln!("ERROR: {}: Condition block should only add a boolean to the stack without altering it.", op.loc);
+                    eprint!("Expected: ");
+                    for dt in snapshot.as_slice()[..snapshot.len()-1].iter() {
+                        eprint!("{dt}, ");
+                    }
+                    eprintln!("{}", snapshot.last().unwrap());
+                    eprint!("Expected: ");
+                    for dt in stack.as_slice()[..stack.len()-1].iter() {
+                        eprint!("{dt}, ");
+                    }
+                    eprintln!("{}", stack.last().unwrap());
+                }else{
+                    stack.pop();
+                }
+            }
+            OpType::Else(_) => {
+                stack_snapshot.pop();
+                stack_snapshot.push(stack.clone());
+            }
+            OpType::End(_) => {
+                let snapshot = stack_snapshot.pop().unwrap();
+                if !stack_equals(&stack, &snapshot){
+                    eprintln!("ERROR: {}: Conditional block should not alter the stack.", op.loc);
+                    eprint!("Expected: ");
+                    for dt in snapshot.as_slice()[..snapshot.len()-1].iter() {
+                        eprint!("{dt}, ");
+                    }
+                    eprintln!("{}", snapshot.last().unwrap());
+                    eprint!("Expected: ");
+                    for dt in stack.as_slice()[..stack.len()-1].iter() {
+                        eprint!("{dt}, ");
+                    }
+                    eprintln!("{}", stack.last().unwrap());
+                }else{
+                    stack.pop();
+                }
+            }
+            OpType::Equal | OpType::NEqual | OpType::Greater | OpType::GreaterE | OpType::Less | OpType::LessE => {
+                let a = stack.pop();
+                let b = stack.pop();
+                match a.clone() {
+                    Some(dt1) => match b.clone() {
+                        Some(dt2) => {
+                            if dt1 as u8 == dt2 as u8 {
+                                stack.push(DataType::Bool);
+                            }else{
+                                wrong_arg(op, "<T>, <T>", vec![a, b])
+                            }
+                        }
+                        None => wrong_arg(op, "<T>, <T>", vec![a, b]),
+                    },
+                    _ => wrong_arg(op, "<T>, <T>", vec![a, b]),
+                }
+            }
+        }
+        ip += 1;
     }
 }
 
