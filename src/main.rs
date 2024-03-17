@@ -165,11 +165,11 @@ fn main() {
                     exit(1);
                 }
 
-            println!("INFO: Runnning rm {file_basename}.o ...");
+            println!("INFO: Running rm {file_basename}.o ...");
             if !Command::new("rm")
                 .arg(format!("{file_basename}.o"))
                 .status().expect("ERROR: Cannot execute rm").success(){
-                    eprintln!("ERROR: rm exited unsuccesfully");
+                    eprintln!("ERROR: rm exited unsuccessfully");
                     exit(1);
                 }
         }

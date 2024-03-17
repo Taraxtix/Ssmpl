@@ -13,6 +13,7 @@ fn end_of_token(c: char) -> bool{
     c.is_ascii_whitespace()
         || c == '('
         || c == ')'
+        || c == '#'
 }
 
 
@@ -74,7 +75,7 @@ pub fn to_op(tokens: Vec<Token>) -> Vec<Op> {
                 "<" => op_type = OpType::Less,
                 "<=" => op_type = OpType::LessE,
                 _ => {
-                    eprintln!("ERROR: {}: Unknow word: `{}`", tok.loc, tok.content);
+                    eprintln!("ERROR: {}: Unknown word: `{}`", tok.loc, tok.content);
                     exit(1);
                 }
             }
@@ -112,7 +113,7 @@ impl<'a> Lexer<'a> {
     }
 
     fn trim_left(&mut self) {
-        while !self.end() && end_of_token(self.content[self.cursor]){
+        while !self.end() && end_of_token(self.content[self.cursor]) && self.content[self.cursor] != '#' {
             if self.content[self.cursor] == '\n' {
                 self.line += 1;
                 self.line_start = self.cursor;
@@ -130,7 +131,7 @@ impl Iterator for Lexer<'_> {
 
         if !self.end() && self.content[self.cursor] == '#' {
             self.cursor += 1;
-            while !self.end() && self.content[self.cursor] != '#' && self.content[self.cursor] != '\n' {
+            while !self.end() && self.content[self.cursor] != '#' {
                 if self.content[self.cursor] == '\n' {
                     self.line += 1;
                     self.line_start = self.cursor;
@@ -151,7 +152,7 @@ impl Iterator for Lexer<'_> {
         }
 
         let content: String = self.content[start..self.cursor].iter().collect::<String>();
-        if content == "(" || content == ")" {
+        if content == "(" || content == ")" || content.is_empty(){
             return self.next();
         }
 

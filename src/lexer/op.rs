@@ -91,12 +91,17 @@ impl Op {
     }
 }
 
-
 #[derive(Clone)]
 enum DataType {
     Int,
     Ptr,
     Bool,
+}
+
+impl PartialEq for DataType {
+    fn eq(&self, other: &Self) -> bool {
+        std::mem::discriminant(self) == std::mem::discriminant(other)
+    }
 }
 
 impl Display for DataType {
@@ -111,7 +116,7 @@ impl Display for DataType {
 
 fn wrong_arg(op: &Op, expected :&str, got :Vec<Option<DataType>>) -> ! {
     eprintln!("ERROR: {}: Wrong argument for {}.", op.loc, op.op_type);
-    eprint!("Expected: {expected}");
+    eprintln!("Expected: {expected}");
     eprint!("Got     : ");
     for dt in got.as_slice()[..expected.len()-1].iter(){
         if let Some(dt) = dt {
@@ -125,20 +130,8 @@ fn wrong_arg(op: &Op, expected :&str, got :Vec<Option<DataType>>) -> ! {
     } else{
         eprint!("None")
     }
+    eprintln!();
     exit(1)
-}
-
-fn stack_equals(stack1: &Vec<DataType>, stack2: &Vec<DataType>) -> bool{
-    if stack1.len() != stack2.len(){
-        false
-    }else{
-        for i in 0..stack1.len(){
-            if stack1.get(i).unwrap().to_owned() as u8 != stack2.get(i).unwrap().to_owned() as u8{
-                return false;
-            }
-        }
-        true
-    }
 }
 
 pub fn type_check(ops: &[Op]){
@@ -149,10 +142,9 @@ pub fn type_check(ops: &[Op]){
         match op.op_type.clone() {
             OpType::Push(_) => stack.push(DataType::Int),
             OpType::Dump => {
-                let a = stack.pop();
-                match a {
-                    Some(_) => { stack.pop(); }
-                    _ => wrong_arg(op, "*", vec![a]),
+                match stack.pop() {
+                    Some(_) => (),
+                    a => wrong_arg(op, "*", vec![a]),
                 }
             }
             OpType::Minus => {
@@ -298,7 +290,7 @@ pub fn type_check(ops: &[Op]){
             }
             OpType::Do(_) => {
                 let snapshot = stack_snapshot.pop().unwrap();
-                if !stack_equals(&stack, &snapshot){
+                if stack != snapshot{
                     eprintln!("ERROR: {}: Condition block should only add a boolean to the stack without altering it.", op.loc);
                     eprint!("Expected: ");
                     for dt in snapshot.as_slice()[..snapshot.len()-1].iter() {
@@ -320,7 +312,7 @@ pub fn type_check(ops: &[Op]){
             }
             OpType::End(_) => {
                 let snapshot = stack_snapshot.pop().unwrap();
-                if !stack_equals(&stack, &snapshot){
+                if stack != snapshot{
                     eprintln!("ERROR: {}: Conditional block should not alter the stack.", op.loc);
                     eprint!("Expected: ");
                     for dt in snapshot.as_slice()[..snapshot.len()-1].iter() {

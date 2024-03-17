@@ -1,0 +1,4 @@
+42 #Push 42 to the stack# 69 # Pushes 69 to the stack# 420 #Pushes 420 to the stack#dump# Dump 420 #
+##dump#Dumps 69#dump #Dumps 42# # Maybe try a multiline comment
+Like that #
+#

@@ -18,11 +18,12 @@ Those goals will surely change during the project.
 ### --Comments--
 Comments will use `#` as a delimiter.
 ```
-# This is a line comment
+# This is a comment #
 Code Here # This is an inline comment # Code here
+# This is a
+multiline comment #
 ```
 
-Note that for an inline comment to start, a space is mandatory after the last operation.
 For now it is impossible to use `#` inside of a comment (I think about making it possible by escaping it)
 
 ### --Push--
