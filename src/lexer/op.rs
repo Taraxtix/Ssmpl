@@ -474,192 +474,192 @@ pub fn compile(ops: Vec<Op>, output_asm: &mut std::fs::File) -> Result<usize, Er
     while let Some(op) = ops.get(ip){
         match op.op_type {
             OpType::Push(val) => {
-                output_asm.write(format!("IP_{ip}:\n").as_bytes())?;
-                output_asm.write(format!("\t;; Pushing {val}\n").as_bytes())?;
-                output_asm.write(format!("\tpush\t{val}\n").as_bytes())?;
+                let _ = output_asm.write(format!("IP_{ip}:\n").as_bytes())?;
+                let _ = output_asm.write(format!("\t;; Pushing {val}\n").as_bytes())?;
+                let _ = output_asm.write(format!("\tpush\t{val}\n").as_bytes())?;
             }
             OpType::Dump => {
-                output_asm.write(format!("IP_{ip}:\n").as_bytes())?;
-                output_asm.write("\t;; Calling Dump\n".as_bytes())?;
-                output_asm.write("\tpop \trdi\n".as_bytes())?;
-                output_asm.write("\tcall\tdump\n".as_bytes())?;
+                let _ = output_asm.write(format!("IP_{ip}:\n").as_bytes())?;
+                let _ = output_asm.write("\t;; Calling Dump\n".as_bytes())?;
+                let _ = output_asm.write("\tpop \trdi\n".as_bytes())?;
+                let _ = output_asm.write("\tcall\tdump\n".as_bytes())?;
             }
             OpType::Minus => {
-                output_asm.write(format!("IP_{ip}:\n").as_bytes())?;
-                output_asm.write("\t;; Minus\n".as_bytes())?;
-                output_asm.write("\tpop \trbx\n".as_bytes())?;
-                output_asm.write("\tpop \trax\n".as_bytes())?;
-                output_asm.write("\tsub \trax, rbx\n".as_bytes())?;
-                output_asm.write("\tpush\trax\n".as_bytes())?;
+                let _ = output_asm.write(format!("IP_{ip}:\n").as_bytes())?;
+                let _ = output_asm.write("\t;; Minus\n".as_bytes())?;
+                let _ = output_asm.write("\tpop \trbx\n".as_bytes())?;
+                let _ = output_asm.write("\tpop \trax\n".as_bytes())?;
+                let _ = output_asm.write("\tsub \trax, rbx\n".as_bytes())?;
+                let _ = output_asm.write("\tpush\trax\n".as_bytes())?;
             }
             OpType::Plus => {
-                output_asm.write(format!("IP_{ip}:\n").as_bytes())?;
-                output_asm.write("\t;; Plus\n".as_bytes())?;
-                output_asm.write("\tpop \trbx\n".as_bytes())?;
-                output_asm.write("\tpop \trax\n".as_bytes())?;
-                output_asm.write("\tadd \trax, rbx\n".as_bytes())?;
-                output_asm.write("\tpush\trax\n".as_bytes())?;
+                let _ = output_asm.write(format!("IP_{ip}:\n").as_bytes())?;
+                let _ = output_asm.write("\t;; Plus\n".as_bytes())?;
+                let _ = output_asm.write("\tpop \trbx\n".as_bytes())?;
+                let _ = output_asm.write("\tpop \trax\n".as_bytes())?;
+                let _ = output_asm.write("\tadd \trax, rbx\n".as_bytes())?;
+                let _ = output_asm.write("\tpush\trax\n".as_bytes())?;
             }
             OpType::Mul => {
-                output_asm.write(format!("IP_{ip}:\n").as_bytes())?;
-                output_asm.write("\t;; Mult\n".as_bytes())?;
-                output_asm.write("\tpop \trbx\n".as_bytes())?;
-                output_asm.write("\tpop \trax\n".as_bytes())?;
-                output_asm.write("\timul\trax, rbx\n".as_bytes())?;
-                output_asm.write("\tpush\trax\n".as_bytes())?;
+                let _ = output_asm.write(format!("IP_{ip}:\n").as_bytes())?;
+                let _ = output_asm.write("\t;; Mul\n".as_bytes())?;
+                let _ = output_asm.write("\tpop \trbx\n".as_bytes())?;
+                let _ = output_asm.write("\tpop \trax\n".as_bytes())?;
+                let _ = output_asm.write("\timul\trax, rbx\n".as_bytes())?;
+                let _ = output_asm.write("\tpush\trax\n".as_bytes())?;
             }
             OpType::Div => {
-                output_asm.write(format!("IP_{ip}:\n").as_bytes())?;
-                output_asm.write("\t;; Div\n".as_bytes())?;
-                output_asm.write("\tpop \trbx\n".as_bytes())?;
-                output_asm.write("\tpop \trax\n".as_bytes())?;
-                output_asm.write("\tcqo\n".as_bytes())?;
-                output_asm.write("\tidiv\trbx\n".as_bytes())?;
-                output_asm.write("\tpush\trax\n".as_bytes())?;
-                output_asm.write("\tpush\trdx\n".as_bytes())?;
+                let _ = output_asm.write(format!("IP_{ip}:\n").as_bytes())?;
+                let _ = output_asm.write("\t;; Div\n".as_bytes())?;
+                let _ = output_asm.write("\tpop \trbx\n".as_bytes())?;
+                let _ = output_asm.write("\tpop \trax\n".as_bytes())?;
+                let _ = output_asm.write("\tcqo\n".as_bytes())?;
+                let _ = output_asm.write("\tidiv\trbx\n".as_bytes())?;
+                let _ = output_asm.write("\tpush\trax\n".as_bytes())?;
+                let _ = output_asm.write("\tpush\trdx\n".as_bytes())?;
             }
             OpType::Inc => {
-                output_asm.write(format!("IP_{ip}:\n").as_bytes())?;
-                output_asm.write("\t;; Inc\n".as_bytes())?;
-                output_asm.write("\tpop \trax\n".as_bytes())?;
-                output_asm.write("\tinc \trax\n".as_bytes())?;
-                output_asm.write("\tpush\trax\n".as_bytes())?;
+                let _ = output_asm.write(format!("IP_{ip}:\n").as_bytes())?;
+                let _ = output_asm.write("\t;; Inc\n".as_bytes())?;
+                let _ = output_asm.write("\tpop \trax\n".as_bytes())?;
+                let _ = output_asm.write("\tinc \trax\n".as_bytes())?;
+                let _ = output_asm.write("\tpush\trax\n".as_bytes())?;
             }
             OpType::Dec => {
-                output_asm.write(format!("IP_{ip}:\n").as_bytes())?;
-                output_asm.write("\t;; Dec\n".as_bytes())?;
-                output_asm.write("\tpop \trax\n".as_bytes())?;
-                output_asm.write("\tdec \trax\n".as_bytes())?;
-                output_asm.write("\tpush\trax\n".as_bytes())?;
+                let _ = output_asm.write(format!("IP_{ip}:\n").as_bytes())?;
+                let _ = output_asm.write("\t;; Dec\n".as_bytes())?;
+                let _ = output_asm.write("\tpop \trax\n".as_bytes())?;
+                let _ = output_asm.write("\tdec \trax\n".as_bytes())?;
+                let _ = output_asm.write("\tpush\trax\n".as_bytes())?;
             }
             OpType::Drop => {
-                output_asm.write(format!("IP_{ip}:\n").as_bytes())?;
-                output_asm.write("\t;; Drop\n".as_bytes())?;
-                output_asm.write("\tpop \trax\n".as_bytes())?;
+                let _ = output_asm.write(format!("IP_{ip}:\n").as_bytes())?;
+                let _ = output_asm.write("\t;; Drop\n".as_bytes())?;
+                let _ = output_asm.write("\tpop \trax\n".as_bytes())?;
             }
             OpType::Drop2 => {
-                output_asm.write(format!("IP_{ip}:\n").as_bytes())?;
-                output_asm.write("\t;; 2Drop\n".as_bytes())?;
-                output_asm.write("\tpop \trax\n".as_bytes())?;
-                output_asm.write("\tpop \trax\n".as_bytes())?;
+                let _ = output_asm.write(format!("IP_{ip}:\n").as_bytes())?;
+                let _ = output_asm.write("\t;; 2Drop\n".as_bytes())?;
+                let _ = output_asm.write("\tpop \trax\n".as_bytes())?;
+                let _ = output_asm.write("\tpop \trax\n".as_bytes())?;
             }
             OpType::Swap => {
-                output_asm.write(format!("IP_{ip}:\n").as_bytes())?;
-                output_asm.write("\t;; Swap\n".as_bytes())?;
-                output_asm.write("\tpop \trax\n".as_bytes())?;
-                output_asm.write("\tpop \trbx\n".as_bytes())?;
-                output_asm.write("\tpush\trax\n".as_bytes())?;
-                output_asm.write("\tpush\trbx\n".as_bytes())?;
+                let _ = output_asm.write(format!("IP_{ip}:\n").as_bytes())?;
+                let _ = output_asm.write("\t;; Swap\n".as_bytes())?;
+                let _ = output_asm.write("\tpop \trax\n".as_bytes())?;
+                let _ = output_asm.write("\tpop \trbx\n".as_bytes())?;
+                let _ = output_asm.write("\tpush\trax\n".as_bytes())?;
+                let _ = output_asm.write("\tpush\trbx\n".as_bytes())?;
             }
             OpType::Over => {
-                output_asm.write(format!("IP_{ip}:\n").as_bytes())?;
-                output_asm.write("\t;; Over\n".as_bytes())?;
-                output_asm.write("\tpop \trax\n".as_bytes())?;
-                output_asm.write("\tpop \trbx\n".as_bytes())?;
-                output_asm.write("\tpush\trbx\n".as_bytes())?;
-                output_asm.write("\tpush\trax\n".as_bytes())?;
-                output_asm.write("\tpush\trbx\n".as_bytes())?;
+                let _ = output_asm.write(format!("IP_{ip}:\n").as_bytes())?;
+                let _ = output_asm.write("\t;; Over\n".as_bytes())?;
+                let _ = output_asm.write("\tpop \trax\n".as_bytes())?;
+                let _ = output_asm.write("\tpop \trbx\n".as_bytes())?;
+                let _ = output_asm.write("\tpush\trbx\n".as_bytes())?;
+                let _ = output_asm.write("\tpush\trax\n".as_bytes())?;
+                let _ = output_asm.write("\tpush\trbx\n".as_bytes())?;
             }
             OpType::Over2 => {
-                output_asm.write(format!("IP_{ip}:\n").as_bytes())?;
-                output_asm.write("\t;; 2Over\n".as_bytes())?;
-                output_asm.write("\tpop \trax\n".as_bytes())?;
-                output_asm.write("\tpop \trbx\n".as_bytes())?;
-                output_asm.write("\tpop \trcx\n".as_bytes())?;
-                output_asm.write("\tpush\trcx\n".as_bytes())?;
-                output_asm.write("\tpush\trbx\n".as_bytes())?;
-                output_asm.write("\tpush\trax\n".as_bytes())?;
-                output_asm.write("\tpush\trcx\n".as_bytes())?;
+                let _ = output_asm.write(format!("IP_{ip}:\n").as_bytes())?;
+                let _ = output_asm.write("\t;; 2Over\n".as_bytes())?;
+                let _ = output_asm.write("\tpop \trax\n".as_bytes())?;
+                let _ = output_asm.write("\tpop \trbx\n".as_bytes())?;
+                let _ = output_asm.write("\tpop \trcx\n".as_bytes())?;
+                let _ = output_asm.write("\tpush\trcx\n".as_bytes())?;
+                let _ = output_asm.write("\tpush\trbx\n".as_bytes())?;
+                let _ = output_asm.write("\tpush\trax\n".as_bytes())?;
+                let _ = output_asm.write("\tpush\trcx\n".as_bytes())?;
             }
             OpType::Dup => {
-                output_asm.write(format!("IP_{ip}:\n").as_bytes())?;
-                output_asm.write("\t;; Dup\n".as_bytes())?;
-                output_asm.write("\tpop \trax\n".as_bytes())?;
-                output_asm.write("\tpush\trax\n".as_bytes())?;
-                output_asm.write("\tpush\trax\n".as_bytes())?;
+                let _ = output_asm.write(format!("IP_{ip}:\n").as_bytes())?;
+                let _ = output_asm.write("\t;; Dup\n".as_bytes())?;
+                let _ = output_asm.write("\tpop \trax\n".as_bytes())?;
+                let _ = output_asm.write("\tpush\trax\n".as_bytes())?;
+                let _ = output_asm.write("\tpush\trax\n".as_bytes())?;
             }
             OpType::If | OpType::While => (),
             OpType::Do(address) => {
-                output_asm.write(format!("IP_{ip}:\n").as_bytes())?;
-                output_asm.write("\t;; Do\n".as_bytes())?;
-                output_asm.write("\tpop \trax\n".as_bytes())?;
-                output_asm.write("\ttest\trax, rax\n".as_bytes())?;
-                output_asm.write(format!("\tje  \tIP_{address}\n").as_bytes())?;
+                let _ = output_asm.write(format!("IP_{ip}:\n").as_bytes())?;
+                let _ = output_asm.write("\t;; Do\n".as_bytes())?;
+                let _ = output_asm.write("\tpop \trax\n".as_bytes())?;
+                let _ = output_asm.write("\ttest\trax, rax\n".as_bytes())?;
+                let _ = output_asm.write(format!("\tje  \tIP_{address}\n").as_bytes())?;
             }
             OpType::Else(address) | OpType::End(address) => {
-                output_asm.write(format!("IP_{ip}:\n").as_bytes())?;
-                output_asm.write("\t;; Else/End\n".as_bytes())?;
-                output_asm.write(format!("\tjmp \tIP_{address}\n").as_bytes())?;
+                let _ = output_asm.write(format!("IP_{ip}:\n").as_bytes())?;
+                let _ = output_asm.write("\t;; Else/End\n".as_bytes())?;
+                let _ = output_asm.write(format!("\tjmp \tIP_{address}\n").as_bytes())?;
             }
             OpType::Equal => {
-                output_asm.write(format!("IP_{ip}:\n").as_bytes())?;
-                output_asm.write("\t;; Equal\n".as_bytes())?;
-                output_asm.write("\tpop \trbx\n".as_bytes())?;
-                output_asm.write("\tpop \trax\n".as_bytes())?;
-                output_asm.write("\tcmp \trax, rbx\n".as_bytes())?;
-                output_asm.write("\tmov \trbx, 1\n".as_bytes())?;
-                output_asm.write("\tmov\trax, 0\n".as_bytes())?;
-                output_asm.write("\tcmove\trax, rbx\n".as_bytes())?;
-                output_asm.write("\tpush\trax\n".as_bytes())?;
+                let _ = output_asm.write(format!("IP_{ip}:\n").as_bytes())?;
+                let _ = output_asm.write("\t;; Equal\n".as_bytes())?;
+                let _ = output_asm.write("\tpop \trbx\n".as_bytes())?;
+                let _ = output_asm.write("\tpop \trax\n".as_bytes())?;
+                let _ = output_asm.write("\tcmp \trax, rbx\n".as_bytes())?;
+                let _ = output_asm.write("\tmov \trbx, 1\n".as_bytes())?;
+                let _ = output_asm.write("\tmov\trax, 0\n".as_bytes())?;
+                let _ = output_asm.write("\tcmove\trax, rbx\n".as_bytes())?;
+                let _ = output_asm.write("\tpush\trax\n".as_bytes())?;
             }
             OpType::NEqual => {
-                output_asm.write(format!("IP_{ip}:\n").as_bytes())?;
-                output_asm.write("\t;; NEqual\n".as_bytes())?;
-                output_asm.write("\tpop \trbx\n".as_bytes())?;
-                output_asm.write("\tpop \trax\n".as_bytes())?;
-                output_asm.write("\tcmp \trax, rbx\n".as_bytes())?;
-                output_asm.write("\tmov \trbx, 1\n".as_bytes())?;
-                output_asm.write("\tmov\trax, 0\n".as_bytes())?;
-                output_asm.write("\tcmovne\trax, rbx\n".as_bytes())?;
-                output_asm.write("\tpush\trax\n".as_bytes())?;
+                let _ = output_asm.write(format!("IP_{ip}:\n").as_bytes())?;
+                let _ = output_asm.write("\t;; NEqual\n".as_bytes())?;
+                let _ = output_asm.write("\tpop \trbx\n".as_bytes())?;
+                let _ = output_asm.write("\tpop \trax\n".as_bytes())?;
+                let _ = output_asm.write("\tcmp \trax, rbx\n".as_bytes())?;
+                let _ = output_asm.write("\tmov \trbx, 1\n".as_bytes())?;
+                let _ = output_asm.write("\tmov\trax, 0\n".as_bytes())?;
+                let _ = output_asm.write("\tcmovne\trax, rbx\n".as_bytes())?;
+                let _ = output_asm.write("\tpush\trax\n".as_bytes())?;
             }
             OpType::Greater => {
-                output_asm.write(format!("IP_{ip}:\n").as_bytes())?;
-                output_asm.write("\t;; Greater\n".as_bytes())?;
-                output_asm.write("\tpop \trbx\n".as_bytes())?;
-                output_asm.write("\tpop \trax\n".as_bytes())?;
-                output_asm.write("\tcmp \trax, rbx\n".as_bytes())?;
-                output_asm.write("\tmov \trbx, 1\n".as_bytes())?;
-                output_asm.write("\tmov\trax, 0\n".as_bytes())?;
-                output_asm.write("\tcmovg\trax, rbx\n".as_bytes())?;
-                output_asm.write("\tpush\trax\n".as_bytes())?;
+                let _ = output_asm.write(format!("IP_{ip}:\n").as_bytes())?;
+                let _ = output_asm.write("\t;; Greater\n".as_bytes())?;
+                let _ = output_asm.write("\tpop \trbx\n".as_bytes())?;
+                let _ = output_asm.write("\tpop \trax\n".as_bytes())?;
+                let _ = output_asm.write("\tcmp \trax, rbx\n".as_bytes())?;
+                let _ = output_asm.write("\tmov \trbx, 1\n".as_bytes())?;
+                let _ = output_asm.write("\tmov\trax, 0\n".as_bytes())?;
+                let _ = output_asm.write("\tcmovg\trax, rbx\n".as_bytes())?;
+                let _ = output_asm.write("\tpush\trax\n".as_bytes())?;
             }
             OpType::GreaterE => {
-                output_asm.write(format!("IP_{ip}:\n").as_bytes())?;
-                output_asm.write("\t;; GreaterE\n".as_bytes())?;
-                output_asm.write("\tpop \trbx\n".as_bytes())?;
-                output_asm.write("\tpop \trax\n".as_bytes())?;
-                output_asm.write("\tcmp \trax, rbx\n".as_bytes())?;
-                output_asm.write("\tmov \trbx, 1\n".as_bytes())?;
-                output_asm.write("\tmov\trax, 0\n".as_bytes())?;
-                output_asm.write("\tcmovge\trax, rbx\n".as_bytes())?;
-                output_asm.write("\tpush\trax\n".as_bytes())?;
+                let _ = output_asm.write(format!("IP_{ip}:\n").as_bytes())?;
+                let _ = output_asm.write("\t;; GreaterE\n".as_bytes())?;
+                let _ = output_asm.write("\tpop \trbx\n".as_bytes())?;
+                let _ = output_asm.write("\tpop \trax\n".as_bytes())?;
+                let _ = output_asm.write("\tcmp \trax, rbx\n".as_bytes())?;
+                let _ = output_asm.write("\tmov \trbx, 1\n".as_bytes())?;
+                let _ = output_asm.write("\tmov\trax, 0\n".as_bytes())?;
+                let _ = output_asm.write("\tcmovge\trax, rbx\n".as_bytes())?;
+                let _ = output_asm.write("\tpush\trax\n".as_bytes())?;
             }
             OpType::Less => {
-                output_asm.write(format!("IP_{ip}:\n").as_bytes())?;
-                output_asm.write("\t;; Less\n".as_bytes())?;
-                output_asm.write("\tpop \trbx\n".as_bytes())?;
-                output_asm.write("\tpop \trax\n".as_bytes())?;
-                output_asm.write("\tcmp \trax, rbx\n".as_bytes())?;
-                output_asm.write("\tmov \trbx, 1\n".as_bytes())?;
-                output_asm.write("\tmov\trax, 0\n".as_bytes())?;
-                output_asm.write("\tcmovl\trax, rbx\n".as_bytes())?;
-                output_asm.write("\tpush\trax\n".as_bytes())?;
+                let _ = output_asm.write(format!("IP_{ip}:\n").as_bytes())?;
+                let _ = output_asm.write("\t;; Less\n".as_bytes())?;
+                let _ = output_asm.write("\tpop \trbx\n".as_bytes())?;
+                let _ = output_asm.write("\tpop \trax\n".as_bytes())?;
+                let _ = output_asm.write("\tcmp \trax, rbx\n".as_bytes())?;
+                let _ = output_asm.write("\tmov \trbx, 1\n".as_bytes())?;
+                let _ = output_asm.write("\tmov\trax, 0\n".as_bytes())?;
+                let _ = output_asm.write("\tcmovl\trax, rbx\n".as_bytes())?;
+                let _ = output_asm.write("\tpush\trax\n".as_bytes())?;
             }
             OpType::LessE => {
-                output_asm.write(format!("IP_{ip}:\n").as_bytes())?;
-                output_asm.write("\t;; LessE\n".as_bytes())?;
-                output_asm.write("\tpop \trbx\n".as_bytes())?;
-                output_asm.write("\tpop \trax\n".as_bytes())?;
-                output_asm.write("\tcmp \trax, rbx\n".as_bytes())?;
-                output_asm.write("\tmov \trbx, 1\n".as_bytes())?;
-                output_asm.write("\tmov\trax, 0\n".as_bytes())?;
-                output_asm.write("\tcmovle\trax, rbx\n".as_bytes())?;
-                output_asm.write("\tpush\trax\n".as_bytes())?;
+                let _ = output_asm.write(format!("IP_{ip}:\n").as_bytes())?;
+                let _ = output_asm.write("\t;; LessE\n".as_bytes())?;
+                let _ = output_asm.write("\tpop \trbx\n".as_bytes())?;
+                let _ = output_asm.write("\tpop \trax\n".as_bytes())?;
+                let _ = output_asm.write("\tcmp \trax, rbx\n".as_bytes())?;
+                let _ = output_asm.write("\tmov \trbx, 1\n".as_bytes())?;
+                let _ = output_asm.write("\tmov\trax, 0\n".as_bytes())?;
+                let _ = output_asm.write("\tcmovle\trax, rbx\n".as_bytes())?;
+                let _ = output_asm.write("\tpush\trax\n".as_bytes())?;
             }
         }
         ip += 1;
     }
-    output_asm.write(format!("IP_{ip}:\n").as_bytes())?;
-    output_asm.write(format!("\t;; Exit").as_bytes())
+    let _ = output_asm.write(format!("IP_{ip}:\n").as_bytes())?;
+    output_asm.write("\t;; Exit".to_string().as_bytes())
 }
