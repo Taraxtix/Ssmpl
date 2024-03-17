@@ -19,7 +19,7 @@ pub enum OpType {
     Dump,
     Minus,
     Plus,
-    Mult,
+    Mul,
     Div,
     Inc,
     Dec,
@@ -49,7 +49,7 @@ impl Display for OpType{
             OpType::Dump => "Dump".fmt(f),
             OpType::Plus => "Plus".fmt(f),
             OpType::Minus => "Minus".fmt(f),
-            OpType::Mult => "Mult".fmt(f),
+            OpType::Mul => "Mult".fmt(f),
             OpType::Div => "Div".fmt(f),
             OpType::Inc => "Inc".fmt(f),
             OpType::Dec => "Dec".fmt(f),
@@ -179,7 +179,7 @@ pub fn type_check(ops: &Vec<Op>){
                     _ => wrong_arg(op, "INT, INT|PTR", vec![b, a]),
                 }
             }
-            OpType::Mult => {
+            OpType::Mul => {
                 let b = stack.pop();
                 let a = stack.pop();
                 match b {
@@ -374,7 +374,7 @@ pub fn simulate(ops: Vec<Op>, stack: &mut Vec<u64>) {
                 let a = op.pop(stack);
                 stack.push(a + b);
             }
-            OpType::Mult => {
+            OpType::Mul => {
                 let b = op.pop(stack);
                 let a = op.pop(stack);
                 stack.push(a * b);
@@ -500,7 +500,7 @@ pub fn compile(ops: Vec<Op>, output_asm: &mut std::fs::File) -> Result<usize, Er
                 output_asm.write("\tadd \trax, rbx\n".as_bytes())?;
                 output_asm.write("\tpush\trax\n".as_bytes())?;
             }
-            OpType::Mult => {
+            OpType::Mul => {
                 output_asm.write(format!("IP_{ip}:\n").as_bytes())?;
                 output_asm.write("\t;; Mult\n".as_bytes())?;
                 output_asm.write("\tpop \trbx\n".as_bytes())?;

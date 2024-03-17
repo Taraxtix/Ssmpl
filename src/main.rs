@@ -4,7 +4,7 @@ use crate::lexer::{Lexer, Token, to_op, op::{simulate, compile, type_check}};
 
 pub mod lexer;
 
-const ASM_HEADER: &'static str =r#"
+const ASM_HEADER: &str =r#"
 global _start
 
 dump:
@@ -45,26 +45,26 @@ dump:
 _start:
 "#;
 
-const ASM_FOOTER: &'static str = "
+const ASM_FOOTER: &str = "
     mov     rax, 60             ;Syscall code for exit
     mov     rdi, 0              ;Param: exit code
     syscall                     ;Calling exit syscall
 ";
 
 fn usage(program: &String) -> String{
-    format!("{program} <option> [filepath] [output-filepath]
+    format!("{program} <option> <filepath> [output-filepath]
 option :
-\tsim\t\tsimulate the given program within rust
-\tcom\t\tcompile the given program to native elf64 executable
+\tsim\t\tSimulate the given program within rust
+\tcom\t\tCompile the given program to native elf64 executable
+
 \t\t\tFor both `sim` and `com` option, filepath is mandatory !
 \t\t\tIf output-filepath is not provided for the `com` option, the output will be automatically named a.out
-\thelp\tprint this help message")
+
+\thelp\t\tprint this help message")
 }
 
 fn main() {
     let args = args().collect::<Vec<_>>();
-    assert!(args.len() >= 1);
-
     if args.len() < 2 {
         eprintln!("ERROR: Not enough argument for the program");
         eprintln!("{}", usage(args.get(0).unwrap()));
@@ -72,27 +72,25 @@ fn main() {
     }
 
     let option = args.get(1).unwrap().as_str();
-    let filepath :String;
-    match option {
+    let filepath :String = match option {
         "sim"|"com" => {
             if args.len() < 3 {
                 eprintln!("ERROR: No filepath were provided");
                 eprintln!("{}", usage(args.get(0).unwrap()));
                 exit(1);
             }
-            filepath = args.get(2).unwrap().to_string();
+            args.get(2).unwrap().to_string()
         }
         "help" => {
-            println!("ERROR: Unknown command");
             println!("{}", usage(args.get(0).unwrap()));
-            exit(0);
+            exit(0)
         }
         _ => {
             eprintln!("ERROR: Unknown command");
             eprintln!("{}", usage(args.get(0).unwrap()));
-            exit(1);
+            exit(1)
         }
-    }
+    };
 
     let file_content: Vec<_> =
         match fs::read_to_string(filepath.clone()){
@@ -103,10 +101,7 @@ fn main() {
             },
         }.chars().collect();
 
-    let tokens: Vec<Token> = Lexer::new(filepath.clone(), file_content.as_slice()).filter(|token|{
-        token.content.as_str() != "(" &&
-        token.content.as_str() != ")"
-    }).collect();
+    let tokens: Vec<Token> = Lexer::new(filepath.clone(), file_content.as_slice()).collect();
     let ops = to_op(tokens);
     type_check(&ops);
 
@@ -135,7 +130,7 @@ fn main() {
             if !Command::new("rm")
                 .arg(format!("{file_basename}.asm"))
                 .status().expect("ERROR: Cannot execute rm").success(){
-                    eprintln!("ERROR: rm exited unsuccesfully");
+                    eprintln!("ERROR: rm exited unsuccessfully");
                     exit(1);
                 }
 
@@ -147,26 +142,26 @@ fn main() {
                 },
             };
 
-            output_asm.write(ASM_HEADER.as_bytes()).expect("ERROR: Could not write to file");
+            let _ = output_asm.write(ASM_HEADER.as_bytes()).expect("ERROR: Could not write to file");
             compile(ops, &mut output_asm).expect("ERROR: Could not write to file");    
-            output_asm.write(ASM_FOOTER.as_bytes()).expect("ERROR: Could not write to file");
+            let _ = output_asm.write(ASM_FOOTER.as_bytes()).expect("ERROR: Could not write to file");
 
             println!("INFO: Running `nasm -f elf64 {file_basename}.asm` ...");
             if !Command::new("nasm")
-                .arg("-f elf64")
+                .args(["-f", "elf64"])
                 .arg(format!("{file_basename}.asm"))
                 .status().expect("ERROR: Cannot execute nasm").success(){
-                    eprintln!("ERROR: nasm exited unsuccesfully");
+                    eprintln!("ERROR: nasm exited unsuccessfully");
                     exit(1);
                 }
 
-            println!("INFO: Runnning ld {file_basename}.o -o {output_filepath} ...");
+            println!("INFO: Running ld {file_basename}.o -o {output_filepath} ...");
             if !Command::new("ld")
                 .arg(format!("{file_basename}.o"))
                 .arg("-o")
-                .arg(format!("{output_filepath}"))
+                .arg(&output_filepath)
                 .status().expect("ERROR: Cannot execute ld").success(){
-                    eprintln!("ERROR: ld exited unsuccesfully");
+                    eprintln!("ERROR: ld exited unsuccessfully");
                     exit(1);
                 }
 

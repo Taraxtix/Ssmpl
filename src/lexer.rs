@@ -29,7 +29,7 @@ pub fn to_op(tokens: Vec<Token>) -> Vec<Op> {
                 "dump" => op_type = OpType::Dump,
                 "-" => op_type = OpType::Minus,
                 "+" => op_type = OpType::Plus,
-                "*" => op_type = OpType::Mult,
+                "*" => op_type = OpType::Mul,
                 "/" => op_type = OpType::Div,
                 "++" => op_type = OpType::Inc,
                 "--" => op_type = OpType::Dec,
@@ -85,7 +85,7 @@ pub fn to_op(tokens: Vec<Token>) -> Vec<Op> {
         ops.push(op);
         ip += 1;
     }
-    return ops;
+    ops
 }
 
 impl Display for Token {
@@ -150,13 +150,18 @@ impl Iterator for Lexer<'_> {
             self.cursor += 1;
         }
 
+        let content: String = self.content[start..self.cursor].iter().collect::<String>();
+        if content == "(" || content == ")" {
+            return self.next();
+        }
+
         Some(Token {
             loc: Loc{
                 file_path: self.file_path.clone(),
                 line: self.line,
                 col: self.cursor - self.line_start,
             },
-            content: self.content[start..self.cursor].iter().collect::<String>(),
+            content,
         })
     }
 }
