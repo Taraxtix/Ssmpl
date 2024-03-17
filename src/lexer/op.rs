@@ -141,12 +141,12 @@ fn stack_equals(stack1: &Vec<DataType>, stack2: &Vec<DataType>) -> bool{
     }
 }
 
-pub fn type_check(ops: &Vec<Op>){
+pub fn type_check(ops: &[Op]){
     let mut ip: usize = 0;
     let mut stack: Vec<DataType> = vec![];
     let mut stack_snapshot: Vec<Vec<DataType>> = vec![];
     while let Some(op) = ops.get(ip){
-        match op.clone().op_type {
+        match op.op_type.clone() {
             OpType::Push(_) => stack.push(DataType::Int),
             OpType::Dump => {
                 let a = stack.pop();
