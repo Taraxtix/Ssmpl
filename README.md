@@ -3,136 +3,177 @@
 A basic stack based programming language (For learning purposes).
 
 ## Goals
-Those goals will surely change during the project. 
-- [X] Simulated
-- [X] Compiled
-- [X] Statically typed (with compilation time type checking)
+
+Those goals will surely change during the project.
+
+- [x] Simulated
+- [x] Compiled
+- [x] Statically typed (with compilation time type checking)
 - [ ] Turing complete
 - [ ] Self-Hosted
 
 ## Documentation
 
-### Random Informations
-- Parentheses are ignored
+### Implicit casting
+
+Some types can implicitly be casted to other types at compiled time.
+
+- `bool` can be casted from `i64` and `f64`
+- `i64` can be casted from `bool`
+- `f64` can be casted from `i64` and `bool`
 
 ### --Comments--
-Comments will use `#` as a delimiter.
-```
-# This is a comment #
-Code Here # This is an inline comment # Code here
-# This is a
-multiline comment #
-```
 
-For now it is impossible to use `#` inside of a comment (I think about making it possible by escaping it)
+Comments will use `//` for line comments and `/*` and `*/` for block comments as a delimiter.
+
+```rust
+// This is a comment
+Code Here /* This is an inline comment */ Code here
+/* This is a
+multiline comment */
+```
 
 ### --Push--
+
 To push a digit to the stack you just have to write the digit as is.
-```pascal
-42 69
+You can pass integers as well as floats.
+values prefixes with `0b`, `0o`, `0x` are supported and will be converted to integers from binary, octal and hex respectively.:
+
+```rust
+42 69. 420.12 -9.9 .690 -10 0xBEEF 0b101 0o707
 ```
 
 ### --Dump--
-`dump` 
-```rust
-let a = pop();
-println!("{a}");
-```
+
+``dump`
+pop the top element of the stack and print it followed by a new line.
 
 ### --Arithmetic--
+
+Any operation between a integer and a float will implicitly convert the integer to a float.
+
 #### --Plus--
+
 `+`
+
 ```rust
 let b = pop();
 let a = pop();
 push(a + b);
 ```
+
 #### --Minus--
+
 `-`
+
 ```rust
 let b = pop();
 let a = pop();
 push(a - b);
 ```
+
 #### --Multiply--
+
 `*`
+
 ```rust
 let b = pop();
 let a = pop();
 push(a * b);
 ```
+
 #### --Division--
+
 Division is a bit special as it push both the result and the reminder of the division to the stack.
 `/`
+
 ```rust
 let b = pop();
 let a = pop();
 push(a / b);
+```
+
+#### --Modulo--
+
+Modulo is only supported for integers.
+`%`
+
+```rust
+let b = pop();
+let a = pop();
 push(a % b);
 ```
+
 #### --Increment--
+
 `++`
+
 ```rust
 let a = pop();
 push(a + 1);
 ```
+
 #### --Decrement--
+
 `--`
+
 ```rust
 let a = pop();
 push(a - 1);
 ```
+
 ### --Stack Manipulation--
-#### --Drop--
-`drop`
+
+#### --DropX--
+
+`dropX` Where `X` is a positive integer (pops X times from the stack)
+If no X is provide (`drop`), it is equivalent to `drop1`
+
 ```rust
-pop();
+for _ in 0..X{
+    pop();
+}
 ```
-#### --2Drop--
-`2drop`
-```rust
-pop();
-pop();
-```
+
 #### --Swap--
+
 `swap`
+
 ```rust
 let a = pop();
 let b = pop();
 push(a);
 push(b);
 ```
+
 #### --Over--
-`over`
+
+`overX` Where `X` is a positive integer (push a copy of the (X+1)nth element of the stack)
+If no X is provide (`over`), it is equivalent to `over1`
+
 ```rust
-let a = pop();
-let b = pop();
-push(b);
+let a = stack[X+1];
 push(a);
-push(b);
 ```
-#### --2Over--
-`2over`
-```rust
-let a = pop();
-let b = pop();
-let c = pop();
-push(c);
-push(b);
-push(a);
-push(c);
-```
+
 #### --Dup--
-`dup`
+
+`dupX` Where `X` is a positive integer (push a copy of the X firsts elements of the stack (in the same order))
+
 ```rust
-let a = pop();
-push(a);
-push(a);
+for _ in 0..X{
+    push(stack[X]);
+}
 ```
+
 ### --Control flow--
-In all control flow, the `condition` part must add exactly one value to the stack without modifying the rest of the stack.
-This value will be consider `false` if equal to zero and `true` otherwise
+
+In all control flow, the `condition` part must add exactly one boolean value to the stack without modifying the rest of the stack.
+
 #### --If--
+
+An If block must return the stack as it was before the if block.
+
 ```rust
 if # condition # do
     # Execute here if condition is true #
@@ -140,7 +181,9 @@ end
 ```
 
 #### --While--
-Using a while, the inside block of code must return a stack containing the same amout of value as before the while. 
+
+A while block must return as it was before the while block.
+
 ```rust
 while # condition # do
     # Execute here while condition is true #
@@ -148,7 +191,9 @@ end
 ```
 
 #### --Else--
-using a else block, the if block and the else block must alter the stack the same way. 
+
+An if with an else block must modify the stack in the same way
+
 ```rust
 if # condition # do
     # Execute here if condition is true #
@@ -156,44 +201,67 @@ else
     # Execute here if condition is false #
 end
 ```
+
 ### --Comparison--
+
+All comparison operators push a boolean value to the stack.
+
+WARNING: Comparing floats uses the CPU floats arithmetic so it can be off cause to precision error.
+
 #### --Equal--
+
 `==`
+
 ```rust
 let b = pop();
 let a = pop();
 push(a == b);
 ```
+
 #### --Not Equal--
+
 `!=`
+
 ```rust
 let b = pop();
 let a = pop();
 push(a != b);
 ```
+
 #### --Greater--
+
 `>`
+
 ```rust
 let b = pop();
 let a = pop();
 push(a > b);
 ```
+
 #### --Greater or Equal--
+
 `>=`
+
 ```rust
 let b = pop();
 let a = pop();
 push(a >= b);
 ```
+
 #### --Less--
+
 `<`
+
 ```rust
 let b = pop();
 let a = pop();
 push(a < b);
 ```
+
 #### --Less or Equal--
+
 `<=`
+
 ```rust
 let b = pop();
 let a = pop();

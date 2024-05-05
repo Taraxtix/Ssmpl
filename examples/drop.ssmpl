@@ -1,0 +1,8 @@
+42 1 drop dump
+42 1 drop1 dump
+42 1 2 drop drop dump
+42 1 2 drop2 dump
+42 1 2 3 drop3 dump
+42 1 2 3 drop drop2 dump
+42 1 2 3 drop2 drop dump
+124

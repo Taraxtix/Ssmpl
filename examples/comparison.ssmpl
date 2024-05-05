@@ -1,0 +1,11 @@
+42 42.0 == dump
+42 69 == dump
+42 69 != dump
+42 42 != dump
+69 42 > dump
+42 42 > dump
+42 42 >= dump
+42 69 >= dump
+69 69 <= dump
+69 42 <= dump
+

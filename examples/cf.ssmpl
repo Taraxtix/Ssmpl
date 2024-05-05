@@ -1,0 +1,19 @@
+if 1 then
+	42 dump
+end
+
+if 0 then
+	1236 dump
+end
+
+if 0 then
+	12357 dump
+else
+	42 dump
+end
+
+10 while dup do
+	dup dump
+	--
+end
+drop

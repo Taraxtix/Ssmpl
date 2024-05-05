@@ -1,0 +1,7 @@
+argc argv dump dump
+while over do
+	1 over 6 syscall(1) dump
+	1 +
+	swap -- swap
+end
+drop2
