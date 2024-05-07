@@ -1,0 +1,104 @@
+#region Width
+max_width = 90
+use_small_heuristics = "Max"
+#endregion
+#region Indent/Tabs
+hard_tabs = true
+tab_spaces = 4
+indent_style = "Block"
+#endregion
+#region Comments
+comment_width = 90
+wrap_comments = true
+format_code_in_doc_comments = true
+doc_comment_code_block_width = 90
+normalize_comments = true
+normalize_doc_attributes = true
+#endregion
+#region FormatThis
+format_strings = true
+format_macro_matchers = true
+format_macro_bodies = true
+format_generated_files = true
+#endregion
+#region SingleLine
+empty_item_single_line = true
+struct_lit_single_line = true
+fn_single_line = true
+where_single_line = true
+#endregion
+#region Imports
+imports_indent = "Block"
+imports_layout = "HorizontalVertical"
+imports_granularity = "Crate"
+group_imports = "StdExternalCrate"
+#endregion
+#region Reordering
+reorder_imports = true
+reorder_modules = true
+reorder_impl_items = true
+#endregion
+#region Spaces
+space_before_colon = false
+space_after_colon = true
+spaces_around_ranges = false
+#endregion
+#region Alignment
+struct_field_align_threshold = 20
+enum_discrim_align_threshold = 20
+#endregion
+#region BlankLines
+blank_lines_upper_bound = 1
+blank_lines_lower_bound = 0
+#endregion
+#region Shorthands
+use_try_shorthand = true
+use_field_init_shorthand = true
+#endregion
+#region Style
+binop_separator = "Front"
+type_punctuation_density = "Wide"
+hex_literal_case = "Upper"
+newline_style = "Auto"
+brace_style = "PreferSameLine"
+control_brace_style = "AlwaysSameLine"
+#endregion
+#region Merge/Combine
+combine_control_expr = true
+merge_derives = true
+condense_wildcard_suffixes = true
+remove_nested_parens = true
+#endregion
+#region Trailing
+trailing_semicolon = true
+trailing_comma = "Vertical"
+#endregion
+#region Match
+match_block_trailing_comma = false
+match_arm_blocks = true
+match_arm_leading_pipes = "Always"
+#endregion
+#region Misc
+short_array_element_width_threshold = 10
+overflow_delimited_expr = true
+force_multiline_blocks = true
+fn_params_layout = "Tall"
+inline_attribute_width = 0
+force_explicit_abi = true
+#endregion
+#region Rustfmt Config
+skip_macro_invocations = []
+edition = "2015"
+version = "One"
+color = "Auto"
+required_version = "1.7.0"
+unstable_features = true
+disable_all_formatting = false
+skip_children = false
+hide_parse_errors = false
+error_on_line_overflow = false
+error_on_unformatted = false
+ignore = []
+emit_mode = "Files"
+make_backup = false
+#endregion

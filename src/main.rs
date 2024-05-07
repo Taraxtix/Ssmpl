@@ -98,14 +98,14 @@ fn retrieve_options(
 					);
 					"a.out".to_string()
 				})
-			},
+			}
 			| "-d" | "--debug" => debug = true,
 			| "-h" | "--help" => help = true,
 			| "--rounding" => rounding = true,
 			| "-r" | "--run" => run = true,
 			| other => {
 				reporter.add_error(format!("Unknown option: {}", other));
-			},
+			}
 		}
 	}
 	(output_path, debug, help, rounding, run)
@@ -152,10 +152,10 @@ fn main() {
 					.wait()
 					.unwrap();
 			}
-		},
+		}
 		| Mode::Sim => {
 			program.reporter.flush().exit_if(Level::Error, 1);
 			program.simulate()
-		},
+		}
 	}
 }

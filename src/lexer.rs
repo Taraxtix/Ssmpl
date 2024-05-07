@@ -81,7 +81,7 @@ impl Display for Token<'_> {
 				} else {
 					write!(f, "false")
 				}
-			},
+			}
 			| Token::Eq(_) => write!(f, "eq"),
 			| Token::Neq(_) => write!(f, "neq"),
 			| Token::Lt(_) => write!(f, "lt"),
@@ -233,9 +233,10 @@ impl<'a> Lexer<'a> {
 	fn expect_size_arg(&mut self) -> i64 {
 		match self.parse_number(false) {
 			| Some(Token::IntLit(value, _)) => value,
-			| _ => self
-				.add_error(format!("{} expected size argument", self.get_annot()))
-				.exit(1),
+			| _ => {
+				self.add_error(format!("{} expected size argument", self.get_annot()))
+					.exit(1)
+			}
 		}
 	}
 

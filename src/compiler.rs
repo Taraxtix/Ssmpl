@@ -227,10 +227,10 @@ impl Op<'_> {
 			| Op::PushI(i, _) => format!(";PUSH {}\n\tpush\t{}\n", i, i),
 			| Op::PushF(f, _) => {
 				format!(";PUSH {}\n\tmov \trax, __float64__({:?})\n\tpush\trax\n", f, f)
-			},
+			}
 			| Op::PushB(b, _) => {
 				format!(";PUSH {}\n\tpush\t{}\n\tpush\trax\n", b, *b as u8)
-			},
+			}
 			| Op::PushStr(s, _) => {
 				let idx = strings
 					.iter()
@@ -238,120 +238,123 @@ impl Op<'_> {
 					.find_map(|(idx, lit)| if s == lit { Some(idx) } else { None })
 					.unwrap();
 				format!(";PUSH {s}\n\tmov \trax, STR_LIT_{idx}\n\tpush\trax\n")
-			},
-			| Op::Dump(a) => match a.get_type().unwrap() {
-				| Type::F64 => {
-					";DUMP_F\n\tpop \trdi\n\tmovq\txmm0, rdi\n\tcall\t".to_string()
-						+ if cli.rounding { "dump_f_rounded\n" } else { "dump_f\n" }
-				},
-				| Type::I64 | Type::Ptr => {
-					";DUMP_I\n\tpop \trdi\n\tcall\tdump_i\n".to_string()
-				},
-				| Type::Bool => ";DUMP_B\n\tcall\tdump_b\n".to_string(),
-			},
+			}
+			| Op::Dump(a) => {
+				match a.get_type().unwrap() {
+					| Type::F64 => {
+						";DUMP_F\n\tpop \trdi\n\tmovq\txmm0, rdi\n\tcall\t".to_string()
+							+ if cli.rounding { "dump_f_rounded\n" } else { "dump_f\n" }
+					}
+					| Type::I64 | Type::Ptr => {
+						";DUMP_I\n\tpop \trdi\n\tcall\tdump_i\n".to_string()
+					}
+					| Type::Bool => ";DUMP_B\n\tcall\tdump_b\n".to_string(),
+				}
+			}
 			| Op::Add(a, b) => {
 				";ADD\n".to_string()
 					+ match (a.get_type().unwrap(), b.get_type().unwrap()) {
 						| (Type::I64, Type::F64) => {
 							"\tpop \trdi\n\tcall\ti64tof64\n\tmovq\txmm1, \
 							 [rsp]\n\taddsd\txmm1, xmm0\n\tmovq\t[rsp], xmm1\n"
-						},
+						}
 						| (Type::F64, Type::I64) => {
 							"\tmov \trdi, qword[rsp+8]\n\tcall\ti64tof64\n\taddsd\txmm0, \
 							 [rsp]\n\tmovq\t[rsp+8], xmm0\n\tadd \trsp, 8\n"
-						},
+						}
 						| (Type::F64, Type::F64) => {
 							"\tmovq\txmm0, [rsp+8]\n\taddsd\txmm0, \
 							 [rsp]\n\tmovq\t[rsp+8], xmm0\n\tadd \trsp, 8\n"
-						},
+						}
 						| (..) => "\tpop \trdi\n\tadd \t[rsp], rdi\n",
 					}
-			},
+			}
 			| Op::Sub(a, b) => {
 				";SUB\n".to_string()
 					+ match (a.get_type().unwrap(), b.get_type().unwrap()) {
 						| (Type::I64, Type::F64) => {
 							"\tpop \trdi\n\tcall\ti64tof64\n\tmovq\txmm1, \
 							 [rsp]\n\tsubsd\txmm1, xmm0\n\tmovq\t[rsp], xmm1\n"
-						},
+						}
 						| (Type::F64, Type::I64) => {
 							"\tmov \trdi, qword[rsp+8]\n\tcall\ti64tof64\n\tsubsd\txmm0, \
 							 [rsp]\n\tmovq\t[rsp+8], xmm0\n\tadd \trsp, 8\n"
-						},
+						}
 						| (Type::F64, Type::F64) => {
 							"\tmovq\txmm0, [rsp+8]\n\tsubsd\txmm0, \
 							 [rsp]\n\tmovq\t[rsp+8], xmm0\n\tadd \trsp, 8\n"
-						},
+						}
 						| (..) => "\tpop \trdi\n\tsub \t[rsp], rdi\n",
 					}
-			},
+			}
 			| Op::Mul(a, b) => {
 				";MUL\n".to_string()
 					+ match (a.get_type().unwrap(), b.get_type().unwrap()) {
 						| (Type::I64, Type::F64) => {
 							"\tpop \trdi\n\tcall\ti64tof64\n\tmovq\txmm1, \
 							 [rsp]\n\tmulsd\txmm1, xmm0\n\tmovq\t[rsp], xmm1\n"
-						},
+						}
 						| (Type::F64, Type::I64) => {
 							"\tmov \trdi, qword[rsp+8]\n\tcall\ti64tof64\n\tmulsd\txmm0, \
 							 [rsp]\n\tmovq\t[rsp+8], xmm0\n\tadd \trsp, 8\n"
-						},
+						}
 						| (Type::F64, Type::F64) => {
 							"\tmovq\txmm0, [rsp+8]\n\tmulsd\txmm0, \
 							 [rsp]\n\tmovq\t[rsp+8], xmm0\n\tadd \trsp, 8\n"
-						},
+						}
 						| (..) => {
 							"\tpop \trdi\n\tpop \trax\n\timul \trax, rdi\n\tpush\t rax\n"
-						},
+						}
 					}
-			},
+			}
 			| Op::Div(a, b) => {
 				";ADD\n".to_string()
 					+ match (a.get_type().unwrap(), b.get_type().unwrap()) {
 						| (Type::I64, Type::F64) => {
 							"\tpop \trdi\n\tcall\ti64tof64\n\tmovq\txmm1, \
 							 [rsp]\n\tdivsd\txmm1, xmm0\n\tmovq\t[rsp], xmm1\n"
-						},
+						}
 						| (Type::F64, Type::I64) => {
 							"\tmov \trdi, qword[rsp+8]\n\tcall\ti64tof64\n\tdivsd\txmm0, \
 							 [rsp]\n\tmovq\t[rsp+8], xmm0\n\tadd \trsp, 8\n"
-						},
+						}
 						| (Type::F64, Type::F64) => {
 							"\tmovq\txmm0, [rsp+8]\n\tdivsd\txmm0, \
 							 [rsp]\n\tmovq\t[rsp+8], xmm0\n\tadd \trsp, 8\n"
-						},
+						}
 						| (..) => {
 							"\tpop \trdi\n\tpop \trax\n\tcqo\n\tidiv \trdi\n\tpush\trax\n"
-						},
+						}
 					}
-			},
-			| Op::Mod(..) => ";MOD\n\tpop \trdi\n\tpop \trax\n\tcqo\n\tidiv \
-			                  \trdi\n\tpush\trdx\n"
-				.into(),
+			}
+			| Op::Mod(..) => {
+				";MOD\n\tpop \trdi\n\tpop \trax\n\tcqo\n\tidiv \trdi\n\tpush\trdx\n"
+					.into()
+			}
 			| Op::Increment(a) => {
 				";INC\n".to_string()
 					+ match a.get_type().unwrap() {
 						| Type::F64 => {
 							"\tmov\trax, __float64__(1.0)\n\tmovq\txmm0, \
 							 rax\n\taddsd\txmm0, [rsp]\n\tmovq\t[rsp], xmm0\n"
-						},
+						}
 						| _ => "\tinc qword[rsp]\n",
 					}
-			},
+			}
 			| Op::Decrement(a) => {
 				";DEC\n".to_string()
 					+ match a.get_type().unwrap() {
 						| Type::F64 => {
 							"\tmov\trax, __float64__(1.0)\n\tmovq\txmm0, \
 							 rax\n\tsubsd\txmm0, [rsp]\n\tmovq\t[rsp], xmm0\n"
-						},
+						}
 						| _ => "\tdec qword[rsp]\n",
 					}
-			},
+			}
 			| Op::Drop(n, _) => format!(";DROP{n}\n\tadd \trsp, {}\n", n * 8),
 			| Op::Swap(_) => {
 				";SWAP\n\tpop \trax\n\tpop \trbx\n\tpush\trax\n\tpush \trbx\n".to_string()
-			},
+			}
 			| Op::Over(n, _) => format!(";OVER{n}\n\tpush\tqword[rsp+{}]\n", 8 * n),
 			| Op::Dup(n, _) => {
 				if *n < 6 {
@@ -371,172 +374,177 @@ impl Op<'_> {
 						labels.get("DUMP_L").unwrap()
 					)
 				}
-			},
+			}
 			| Op::If(..) => ";IF\n".into(),
-			| Op::Then(label, else_, _) => format!(
-				";THEN\n\tpop \trax\n\ttest\trax, rax\n\tjz \t{}\n",
-				if *else_ { format!("ELSE_{label}") } else { format!("END_{label}") }
-			),
+			| Op::Then(label, else_, _) => {
+				format!(
+					";THEN\n\tpop \trax\n\ttest\trax, rax\n\tjz \t{}\n",
+					if *else_ { format!("ELSE_{label}") } else { format!("END_{label}") }
+				)
+			}
 			| Op::Else(label, _) => {
 				format!(";ELSE\n\tjmp \tEND_{label}\nELSE_{label}:\n")
-			},
+			}
 			| Op::End(label, while_, _) => {
 				format!(
 					";END\n{}END_{}{label}:\n",
 					if *while_ { format!("\tjmp \tWHILE_{label}\n") } else { "".into() },
 					if *while_ { "WHILE_" } else { "" }
 				)
-			},
+			}
 			| Op::While(label, _) => format!("WHILE_{label}:\n"),
 			| Op::Do(label, _) => {
 				format!(";DO\n\tpop \trax\n\ttest\trax, rax\n\tjz \tEND_WHILE_{label}\n")
-			},
+			}
 			| Op::Eq(annot_l, annot_r) => {
 				";Eq\n\t".to_string()
 					+ match (annot_l.get_type().unwrap(), annot_r.get_type().unwrap()) {
 						| (Type::F64, Type::F64) => {
 							"movq\txmm1, qword[rsp]\n\tadd \trsp, 8\n\tmovq\txmm0, \
 							 qword[rsp]\n\tcmppd\txmm0, xmm1, 0\n\tcall\ttest_xmm0\n"
-						},
+						}
 						| (_, Type::F64) => {
 							"movq\txmm1, qword[rsp]\n\tadd \trsp, 8\n\tmov \trdi, \
 							 qword[rsp]\n\tcall\ti64tof64\n\tcmppd\txmm0, xmm1, \
 							 0\n\tcall\ttest_xmm0\n"
-						},
+						}
 						| (Type::F64, _) => {
 							"pop \trdi\n\tcall\ti64tof64\n\tmovq\txmm1, \
 							 xmm0\n\tmovq\txmm0, qword[rsp]\n\tcmppd\txmm0, xmm1, \
 							 0\n\tcall\ttest_xmm0\n"
-						},
+						}
 						| (..) => {
 							"pop \trbx\n\tmov \trax, qword[rsp]\n\tcmp \trax, rbx\n\tmov \
 							 \tqword[rsp], 0\n\tsete\t[rsp]\n"
-						},
+						}
 					}
-			},
+			}
 			| Op::Neq(annot_l, annot_r) => {
 				";Neq\n\t".to_string()
 					+ match (annot_l.get_type().unwrap(), annot_r.get_type().unwrap()) {
 						| (Type::F64, Type::F64) => {
 							"movq\txmm1, qword[rsp]\n\tadd \trsp, 8\n\tmovq\txmm0, \
 							 qword[rsp]\n\tcmppd\txmm0, xmm1, 4\n\tcall\ttest_xmm0\n"
-						},
+						}
 						| (_, Type::F64) => {
 							"movq\txmm1, qword[rsp]\n\tadd \trsp, 8\n\tmov \trdi, \
 							 qword[rsp]\n\tcall\ti64tof64\n\tcmppd\txmm0, xmm1, \
 							 0\n\tcall\ttest_xmm0\n"
-						},
+						}
 						| (Type::F64, _) => {
 							"pop \trdi\n\tcall\ti64tof64\n\tmovq\txmm1, \
 							 xmm0\n\tmovq\txmm0, qword[rsp]\n\tcmppd\txmm0, xmm1, \
 							 4\n\tcall\ttest_xmm0\n"
-						},
+						}
 						| (..) => {
 							"pop \trbx\n\tmov \trax, qword[rsp]\n\tcmp \trax, rbx\n\tmov \
 							 \tqword[rsp], 0\n\tsetne\t[rsp]\n"
-						},
+						}
 					}
-			},
+			}
 			| Op::Lt(annot_l, annot_r) => {
 				";Lt\n\t".to_string()
 					+ match (annot_l.get_type().unwrap(), annot_r.get_type().unwrap()) {
 						| (Type::F64, Type::F64) => {
 							"movq\txmm1, qword[rsp]\n\tadd \trsp, 8\n\tmovq\txmm0, \
 							 qword[rsp]\n\tcmppd\txmm0, xmm1, 1\n\tcall\ttest_xmm0\n"
-						},
+						}
 						| (_, Type::F64) => {
 							"movq\txmm1, qword[rsp]\n\tadd \trsp, 8\n\tmov \trdi, \
 							 qword[rsp]\n\tcall\ti64tof64\n\tcmppd\txmm0, xmm1, \
 							 0\n\tcall\ttest_xmm0\n"
-						},
+						}
 						| (Type::F64, _) => {
 							"pop \trdi\n\tcall\ti64tof64\n\tmovq\txmm1, \
 							 xmm0\n\tmovq\txmm0, qword[rsp]\n\tcmppd\txmm0, xmm1, \
 							 1\n\tcall\ttest_xmm0\n"
-						},
+						}
 						| (..) => {
 							"pop \trbx\n\tmov \trax, qword[rsp]\n\tcmp \trax, rbx\n\tmov \
 							 \tqword[rsp], 0\n\tsetl\t[rsp]\n"
-						},
+						}
 					}
-			},
+			}
 			| Op::Gt(annot_l, annot_r) => {
 				";Gt\n\t".to_string()
 					+ match (annot_l.get_type().unwrap(), annot_r.get_type().unwrap()) {
 						| (Type::F64, Type::F64) => {
 							"movq\txmm1, qword[rsp]\n\tadd \trsp, 8\n\tmovq\txmm0, \
 							 qword[rsp]\n\tcmppd\txmm0, xmm1, 0Eh\n\tcall\ttest_xmm0\n"
-						},
+						}
 						| (_, Type::F64) => {
 							"movq\txmm1, qword[rsp]\n\tadd \trsp, 8\n\tmov \trdi, \
 							 qword[rsp]\n\tcall\ti64tof64\n\tcmppd\txmm0, xmm1, \
 							 0\n\tcall\ttest_xmm0\n"
-						},
+						}
 						| (Type::F64, _) => {
 							"pop \trdi\n\tcall\ti64tof64\n\tmovq\txmm1, \
 							 xmm0\n\tmovq\txmm0, qword[rsp]\n\tcmppd\txmm0, xmm1, \
 							 0Eh\n\tcall\ttest_xmm0\n"
-						},
+						}
 						| (..) => {
 							"pop \trbx\n\tmov \trax, qword[rsp]\n\tcmp \trax, rbx\n\tmov \
 							 \tqword[rsp], 0\n\tsetg\t[rsp]\n"
-						},
+						}
 					}
-			},
+			}
 			| Op::Lte(annot_l, annot_r) => {
 				";Lte\n\t".to_string()
 					+ match (annot_l.get_type().unwrap(), annot_r.get_type().unwrap()) {
 						| (Type::F64, Type::F64) => {
 							"movq\txmm1, qword[rsp]\n\tadd \trsp, 8\n\tmovq\txmm0, \
 							 qword[rsp]\n\tcmppd\txmm0, xmm1, 2\n\tcall\ttest_xmm0\n"
-						},
+						}
 						| (_, Type::F64) => {
 							"movq\txmm1, qword[rsp]\n\tadd \trsp, 8\n\tmov \trdi, \
 							 qword[rsp]\n\tcall\ti64tof64\n\tcmppd\txmm0, xmm1, \
 							 0\n\tcall\ttest_xmm0\n"
-						},
+						}
 						| (Type::F64, _) => {
 							"pop \trdi\n\tcall\ti64tof64\n\tmovq\txmm1, \
 							 xmm0\n\tmovq\txmm0, qword[rsp]\n\tcmppd\txmm0, xmm1, \
 							 2\n\tcall\ttest_xmm0\n"
-						},
+						}
 						| (..) => {
 							"pop \trbx\n\tmov \trax, qword[rsp]\n\tcmp \trax, rbx\n\tmov \
 							 \tqword[rsp], 0\n\tsetle\t[rsp]\n"
-						},
+						}
 					}
-			},
+			}
 			| Op::Gte(annot_l, annot_r) => {
 				";Gte\n\t".to_string()
 					+ match (annot_l.get_type().unwrap(), annot_r.get_type().unwrap()) {
 						| (Type::F64, Type::F64) => {
 							"movq\txmm1, qword[rsp]\n\tadd \trsp, 8\n\tmovq\txmm0, \
 							 qword[rsp]\n\tcmppd\txmm0, xmm1, 0Dh\n\tcall\ttest_xmm0\n"
-						},
+						}
 						| (_, Type::F64) => {
 							"movq\txmm1, qword[rsp]\n\tadd \trsp, 8\n\tmov \trdi, \
 							 qword[rsp]\n\tcall\ti64tof64\n\tcmppd\txmm0, xmm1, \
 							 0\n\tcall\ttest_xmm0\n"
-						},
+						}
 						| (Type::F64, _) => {
 							"pop \trdi\n\tcall\ti64tof64\n\tmovq\txmm1, \
 							 xmm0\n\tmovq\txmm0, qword[rsp]\n\tcmppd\txmm0, xmm1, \
 							 0Dh\n\tcall\ttest_xmm0\n"
-						},
+						}
 						| (..) => {
 							"pop \trbx\n\tmov \trax, qword[rsp]\n\tcmp \trax, rbx\n\tmov \
 							 \tqword[rsp], 0\n\tsetge\t[rsp]\n"
-						},
+						}
 					}
-			},
+			}
 			| Op::Syscall(syscode, argc, _) => {
 				(0..*argc).rev().fold(";Syscall\n\t".to_string(), |acc, idx| {
 					format!("{acc}pop \t{}\n\t", SYSCALL_REGS[idx])
 				}) + format!("mov \trax, {syscode}\n\tsyscall\n\tpush\trax\n").as_str()
-			},
-			| Op::Nop => unreachable!(),
+			}
 			| Op::Argc(_) => ";Argc\n\tpush\tqword[argc]\n".into(),
 			| Op::Argv(_) => ";Argv\n\tpush\tqword[argv]\n".into(),
+			| Op::Deref(_) => {
+				";Deref\n\tmov \trax, qword[rsp]\n\tmov\tqword[rsp], qword[rax]\n".into()
+			}
+			| Op::Nop => unreachable!(),
 		}
 	}
 }
