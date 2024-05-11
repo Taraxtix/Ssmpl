@@ -1,0 +1,7 @@
+macro strlen {
+	0 while over <|8 do
+		++ 
+		swap ++ swap // (over ++)
+	end
+	swap drop
+}

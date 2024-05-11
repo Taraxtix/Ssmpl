@@ -1,0 +1,9 @@
+include "stdlib/strings.ssmpl"
+
+macro print {
+	1 swap dup strlen syscall(1) drop
+}
+
+macro println {
+	print "\n" print
+}
