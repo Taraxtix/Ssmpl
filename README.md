@@ -19,8 +19,9 @@ Those goals will surely change during the project.
 Some types can implicitly be casted to other types at compiled time.
 
 - `bool` can be casted from `i64` and `f64`
-- `i64` can be casted from `bool`
+- `i64` can be casted from `bool` and `ptr`
 - `f64` can be casted from `i64` and `bool`
+- `ptr` can be casted from `i64`
 
 ### --Comments--
 
@@ -124,9 +125,9 @@ push(a - 1);
 
 ### --Stack Manipulation--
 
-#### --DropX--
+#### --Drop--
 
-`dropX` Where `X` is a positive integer (pops X times from the stack)
+`drop(X)` Where `X` is a positive integer (pops X times from the stack)
 If no X is provide (`drop`), it is equivalent to `drop1`
 
 ```rust
@@ -148,7 +149,7 @@ push(b);
 
 #### --Over--
 
-`overX` Where `X` is a positive integer (push a copy of the (X+1)nth element of the stack)
+`over(X)` Where `X` is a positive integer (push a copy of the (X+1)nth element of the stack)
 If no X is provide (`over`), it is equivalent to `over1`
 
 ```rust
@@ -158,7 +159,7 @@ push(a);
 
 #### --Dup--
 
-`dupX` Where `X` is a positive integer (push a copy of the X firsts elements of the stack (in the same order))
+`dup(X)` Where `X` is a positive integer (push a copy of the X firsts elements of the stack (in the same order))
 
 ```rust
 for _ in 0..X{
@@ -267,3 +268,51 @@ let b = pop();
 let a = pop();
 push(a <= b);
 ```
+
+### --Program arguments--
+
+#### --Argc--
+
+`argc`: Pushes the number of arguments passed to the program
+
+#### --Argv--
+
+`argv`: Pushes the pointer to the start of the arguments passed to the program
+
+### --Memory manipulation--
+
+#### --Load--
+
+`<|X` Where `X` is the size of the value to load from memory. (Possible values: 8, 16, 32, 64)
+
+```rust
+let ptr = pop();
+push(memory[ptr]);
+```
+
+#### --Store--
+
+`|>X` Where `X` is the size of the value to store to the memory. (Possible values: 8, 16, 32, 64)
+
+```rust
+let value = pop();
+let ptr = pop();
+memory[ptr] = value;
+```
+
+### --Macro--
+
+Macro are replaced by their value at compile time.
+
+```rust
+macro NAME {
+    OPERATIONS
+}
+```
+
+### --Include--
+
+`include "file_path"`
+file path is relative to where the compiler is executed. (I will try to make it relative to the file in the future)
+
+Parse the file and append everything it contains to main program

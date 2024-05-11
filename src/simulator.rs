@@ -1,7 +1,10 @@
 //#region Imports
 use std::collections::HashMap;
 
-use crate::parser::{Op, Program};
+use crate::{
+	annotation::Type,
+	parser::{Op, OpType, Program},
+};
 //#endregion
 
 #[derive(Clone, PartialEq)]
@@ -17,7 +20,7 @@ impl Data {
 		match self {
 			| Data::Ptr(v) | Data::I64(v) => *v,
 			| Data::Bool(v) => *v as i64,
-			| Data::F64(_) => unreachable!(),
+			| Data::F64(v) => i64::from_ne_bytes(v.to_ne_bytes()),
 		}
 	}
 }
@@ -38,47 +41,48 @@ fn simulate_syscall(syscode: &usize) -> Option<i64> {
 
 const MEM_LENGTH: usize = 1024;
 
-impl Program<'_> {
+impl Program {
 	fn find_op_by_label(&self, label: &i64, op: &str) -> Option<(usize, &Op)> {
 		self.ops.iter().enumerate().find(|(_, f_op)| {
+			let Op { typ, .. } = f_op;
 			match op {
 				| "Then" => {
-					if let Op::Then(f_label, ..) = f_op {
+					if let OpType::Then(f_label, ..) = typ {
 						if f_label == label {
 							return true;
 						}
 					}
 				}
 				| "Else" => {
-					if let Op::Else(f_label, ..) = f_op {
+					if let OpType::Else(f_label, ..) = typ {
 						if f_label == label {
 							return true;
 						}
 					}
 				}
 				| "While" => {
-					if let Op::While(f_label, ..) = f_op {
+					if let OpType::While(f_label, ..) = typ {
 						if f_label == label {
 							return true;
 						}
 					}
 				}
 				| "Do" => {
-					if let Op::Do(f_label, ..) = f_op {
+					if let OpType::Do(f_label, ..) = typ {
 						if f_label == label {
 							return true;
 						}
 					}
 				}
 				| "EndIf" => {
-					if let Op::End(f_label, false, ..) = f_op {
+					if let OpType::End(f_label, false, ..) = typ {
 						if f_label == label {
 							return true;
 						}
 					}
 				}
 				| "EndWhile" => {
-					if let Op::End(f_label, true, ..) = f_op {
+					if let OpType::End(f_label, true, ..) = typ {
 						if f_label == label {
 							return true;
 						}
@@ -90,47 +94,47 @@ impl Program<'_> {
 		})
 	}
 
+	#[allow(clippy::identity_op)]
 	pub fn simulate(&mut self) {
+		use OpType::*;
+
 		let mut stack: Vec<Data> = vec![];
 		let mut cf_labels: Vec<CFLabels> = vec![];
 		let mut ip = 0;
 		let mut labels_map: HashMap<i64, (usize, usize)> = HashMap::new(); // label -> (if_idx, while_idx)
-		let mut memory: [u64; MEM_LENGTH] = [0; MEM_LENGTH];
+		let mut memory: [u8; MEM_LENGTH] = [0; MEM_LENGTH];
 		let mut strings_ptr: HashMap<String, usize> = HashMap::new();
 		let mut string_end = 0;
 
 		for lit in self.strings.iter() {
 			strings_ptr.insert(lit.clone(), string_end);
-			let mut value: u64 = 0;
-			for byte_idx in 0..lit.as_bytes().len() {
-				value = value << 8 | lit.as_bytes()[byte_idx] as u64;
-				if byte_idx % 8 == 7 || byte_idx == lit.as_bytes().len() - 1 {
-					if string_end == MEM_LENGTH {
-						self.add_error("Not enough memory to initialize strings".into())
-							.exit(1);
-					}
-					memory[string_end] = value;
-					string_end += 1;
+			for byte in lit.as_bytes() {
+				if string_end >= MEM_LENGTH {
+					self.add_error("Not enough memory for strings allocation".into())
+						.exit(1);
 				}
+				memory[string_end] = *byte;
+				string_end += 1;
 			}
 		}
 
 		while ip < self.ops.len() {
-			match &self.ops[ip] {
-				| Op::PushI(i, _) => stack.push(Data::I64(*i)),
-				| Op::PushB(b, _) => stack.push(Data::Bool(*b)),
-				| Op::PushF(f, _) => stack.push(Data::F64(*f)),
-				| Op::PushStr(s, _) => {
+			let Op { typ, annot } = &self.ops[ip];
+			match typ {
+				| PushI(i) => stack.push(Data::I64(*i)),
+				| PushB(b) => stack.push(Data::Bool(*b)),
+				| PushF(f) => stack.push(Data::F64(*f)),
+				| PushStr(s) => {
 					stack.push(Data::Ptr(*strings_ptr.get(s).unwrap() as i64))
 				}
-				| Op::Dump(_) => {
+				| Dump(_) => {
 					match stack.pop().unwrap() {
 						| Data::I64(i) | Data::Ptr(i) => println!("{}", i),
 						| Data::F64(f) => println!("{:?}", f),
 						| Data::Bool(b) => println!("{}", b),
 					}
 				}
-				| Op::Add(..) => {
+				| Add(..) => {
 					match (stack.pop().unwrap(), stack.pop().unwrap()) {
 						| (Data::F64(v1), Data::I64(v2)) => {
 							stack.push(Data::F64(v2 as f64 + v1))
@@ -144,7 +148,7 @@ impl Program<'_> {
 						| (a, b) => stack.push(Data::I64(b.to_i64() + a.to_i64())),
 					}
 				}
-				| Op::Sub(..) => {
+				| Sub(..) => {
 					match (stack.pop().unwrap(), stack.pop().unwrap()) {
 						| (Data::F64(v1), Data::I64(v2)) => {
 							stack.push(Data::F64(v2 as f64 - v1))
@@ -158,7 +162,7 @@ impl Program<'_> {
 						| (a, b) => stack.push(Data::I64(b.to_i64() - a.to_i64())),
 					}
 				}
-				| Op::Mul(..) => {
+				| Mul(..) => {
 					match (stack.pop().unwrap(), stack.pop().unwrap()) {
 						| (Data::F64(v1), Data::I64(v2)) => {
 							stack.push(Data::F64(v2 as f64 * v1))
@@ -172,7 +176,7 @@ impl Program<'_> {
 						| (a, b) => stack.push(Data::I64(b.to_i64() * a.to_i64())),
 					}
 				}
-				| Op::Div(..) => {
+				| Div(..) => {
 					match (stack.pop().unwrap(), stack.pop().unwrap()) {
 						| (Data::F64(v1), Data::I64(v2)) => {
 							stack.push(Data::F64(v2 as f64 / v1))
@@ -186,45 +190,43 @@ impl Program<'_> {
 						| (a, b) => stack.push(Data::I64(b.to_i64() / a.to_i64())),
 					}
 				}
-				| Op::Increment(_) => {
+				| Increment(_) => {
 					match stack.pop().unwrap() {
 						| Data::F64(f) => stack.push(Data::F64(f + 1.)),
 						| a => stack.push(Data::I64(a.to_i64() + 1)),
 					}
 				}
-				| Op::Decrement(_) => {
+				| Decrement(_) => {
 					match stack.pop().unwrap() {
 						| Data::F64(f) => stack.push(Data::F64(f - 1.)),
 						| a => stack.push(Data::I64(a.to_i64() - 1)),
 					}
 				}
-				| Op::Mod(..) => {
+				| Mod(..) => {
 					match (stack.pop().unwrap(), stack.pop().unwrap()) {
 						| (a, b) => {
 							stack.push(Data::I64(b.to_i64().rem_euclid(a.to_i64())))
 						}
 					}
 				}
-				| Op::Drop(n, _) => {
+				| Drop(n) => {
 					for _ in 0..*n {
 						stack.pop();
 					}
 				}
-				| Op::Swap(_) => {
+				| Swap => {
 					let a = stack.pop().unwrap();
 					let b = stack.pop().unwrap();
 					stack.push(a);
 					stack.push(b);
 				}
-				| Op::Over(n, _) => {
-					stack.push(stack[stack.len() - *n as usize - 1].clone())
-				}
-				| Op::Dup(n, _) => {
+				| Over(n) => stack.push(stack[stack.len() - *n as usize - 1].clone()),
+				| Dup(n) => {
 					for _ in 0..*n {
 						stack.push(stack[stack.len() - *n as usize].clone());
 					}
 				}
-				| Op::If(label_count, _) => {
+				| If(label_count) => {
 					let if_label = cf_labels.len();
 					match labels_map.get_mut(label_count) {
 						| Some((curr, _)) => {
@@ -237,13 +239,13 @@ impl Program<'_> {
 					cf_labels.push(CFLabels::default());
 					let (else_label, _) = self
 						.find_op_by_label(label_count, "Else")
-						.unwrap_or((0, &Op::Nop));
+						.unwrap_or((0, &Op { typ: Nop, annot: annot.clone() }));
 					let (end_label, _) =
 						self.find_op_by_label(label_count, "EndIf").unwrap();
 					cf_labels.as_mut_slice()[if_label].else_label = else_label as i64;
 					cf_labels.as_mut_slice()[if_label].end_label = end_label as i64;
 				}
-				| Op::While(label_count, _) => {
+				| While(label_count) => {
 					let while_label = cf_labels.len();
 					match labels_map.get_mut(label_count) {
 						| Some((curr, _)) => {
@@ -261,7 +263,7 @@ impl Program<'_> {
 					cf_labels.as_mut_slice()[*label_count as usize].end_label =
 						end_label as i64;
 				}
-				| Op::Then(label_count, else_, _) => {
+				| Then(label_count, else_) => {
 					let (idx, _) = labels_map.get(label_count).unwrap();
 					match stack.pop().unwrap() {
 						| Data::Bool(false)
@@ -277,17 +279,17 @@ impl Program<'_> {
 						| _ => (),
 					}
 				}
-				| Op::Else(label_count, ..) => {
+				| Else(label_count, ..) => {
 					let (idx, _) = labels_map.get(label_count).unwrap();
 					ip = cf_labels[*idx].end_label as usize
 				}
-				| Op::End(label_count, while_, ..) => {
+				| End(label_count, while_, ..) => {
 					let (_, idx) = labels_map.get(label_count).unwrap();
 					if *while_ {
 						ip = cf_labels[*idx].while_label as usize - 1;
 					}
 				}
-				| Op::Do(label_count, ..) => {
+				| Do(label_count, ..) => {
 					let (_, idx) = labels_map.get(label_count).unwrap();
 					match stack.pop().unwrap() {
 						| Data::Bool(false)
@@ -297,7 +299,7 @@ impl Program<'_> {
 						| _ => (),
 					}
 				}
-				| Op::Eq(..) => {
+				| Eq(..) => {
 					match (stack.pop().unwrap(), stack.pop().unwrap()) {
 						| (Data::F64(val_r), Data::F64(val_l)) => {
 							stack.push(Data::Bool(val_l == val_r))
@@ -311,7 +313,7 @@ impl Program<'_> {
 						| (a, b) => stack.push(Data::Bool(b.to_i64() == a.to_i64())),
 					}
 				}
-				| Op::Neq(..) => {
+				| Neq(..) => {
 					match (stack.pop().unwrap(), stack.pop().unwrap()) {
 						| (Data::F64(val_r), Data::F64(val_l)) => {
 							stack.push(Data::Bool(val_l != val_r))
@@ -325,7 +327,7 @@ impl Program<'_> {
 						| (a, b) => stack.push(Data::Bool(b.to_i64() != a.to_i64())),
 					}
 				}
-				| Op::Lt(..) => {
+				| Lt(..) => {
 					match (stack.pop().unwrap(), stack.pop().unwrap()) {
 						| (Data::F64(val_r), Data::F64(val_l)) => {
 							stack.push(Data::Bool(val_l < val_r))
@@ -339,7 +341,7 @@ impl Program<'_> {
 						| (a, b) => stack.push(Data::Bool(b.to_i64() < a.to_i64())),
 					}
 				}
-				| Op::Gt(..) => {
+				| Gt(..) => {
 					match (stack.pop().unwrap(), stack.pop().unwrap()) {
 						| (Data::F64(val_r), Data::F64(val_l)) => {
 							stack.push(Data::Bool(val_l > val_r))
@@ -353,7 +355,7 @@ impl Program<'_> {
 						| (a, b) => stack.push(Data::Bool(b.to_i64() > a.to_i64())),
 					}
 				}
-				| Op::Lte(..) => {
+				| Lte(..) => {
 					match (stack.pop().unwrap(), stack.pop().unwrap()) {
 						| (Data::F64(val_r), Data::F64(val_l)) => {
 							stack.push(Data::Bool(val_l <= val_r))
@@ -367,7 +369,7 @@ impl Program<'_> {
 						| (a, b) => stack.push(Data::Bool(b.to_i64() <= a.to_i64())),
 					}
 				}
-				| Op::Gte(..) => {
+				| Gte(..) => {
 					match (stack.pop().unwrap(), stack.pop().unwrap()) {
 						| (Data::F64(val_r), Data::F64(val_l)) => {
 							stack.push(Data::Bool(val_l >= val_r))
@@ -381,7 +383,7 @@ impl Program<'_> {
 						| (a, b) => stack.push(Data::Bool(b.to_i64() >= a.to_i64())),
 					}
 				}
-				| Op::Syscall(syscode, _argc, annot) => {
+				| Syscall(syscode, _argc) => {
 					match simulate_syscall(syscode) {
 						| Some(val) => stack.push(Data::I64(val)),
 						| None => {
@@ -394,29 +396,70 @@ impl Program<'_> {
 						}
 					}
 				}
-				| Op::Argc(_) | Op::Argv(_) => {
+				| Argc | Argv => {
 					self.add_error(
 						"Program Argument is not supported in simulation mode".into(),
 					)
 					.exit(1)
 				}
-				| Op::Deref(_) => {
-					match stack.pop().unwrap() {
-						| Data::Ptr(val) => {
-							if val as usize >= MEM_LENGTH {
-								self.add_error(
-									"Memory access out of bounds inside of simulation"
-										.to_string(),
-								)
-								.exit(1)
-							} else {
-								stack.push(Data::I64(memory[val as usize] as i64))
-							}
-						}
-						| _ => unreachable!(),
+				| Load8 => {
+					let ptr = stack.pop().unwrap().to_i64() as usize;
+					stack.push(Data::I64(memory[ptr] as i64))
+				}
+				| Load16 => {
+					let ptr = stack.pop().unwrap().to_i64() as usize;
+					let bytes: [u8; 2] = memory[ptr..ptr + 2].try_into().unwrap();
+					stack.push(Data::I64(u16::from_ne_bytes(bytes) as i64))
+				}
+				| Load32 => {
+					let ptr = stack.pop().unwrap().to_i64() as usize;
+					let bytes: [u8; 4] = memory[ptr..ptr + 4].try_into().unwrap();
+					stack.push(Data::I64(u32::from_ne_bytes(bytes) as i64))
+				}
+				| Load64 => {
+					let ptr = stack.pop().unwrap().to_i64() as usize;
+					let bytes: [u8; 8] = memory[ptr..ptr + 8].try_into().unwrap();
+					stack.push(Data::I64(u64::from_ne_bytes(bytes) as i64))
+				}
+				| Store8 => {
+					let val = stack.pop().unwrap().to_i64();
+					let ptr = stack.pop().unwrap().to_i64() as usize;
+					memory[ptr] = (val & 0xFF) as u8
+				}
+				| Store16 => {
+					let val = stack.pop().unwrap().to_i64();
+					let ptr = stack.pop().unwrap().to_i64() as usize;
+					memory[ptr + 0] = (val & 0xFF00) as u8;
+					memory[ptr + 1] = (val & 0x00FF) as u8;
+				}
+				| Store32 => {
+					let val = stack.pop().unwrap().to_i64();
+					let ptr = stack.pop().unwrap().to_i64() as usize;
+					for i in 0..4 {
+						memory[ptr + i] = (val & (0xFF << (3 - i))) as u8
 					}
 				}
-				| Op::Nop => unreachable!(),
+				| Store64 => {
+					let val = stack.pop().unwrap().to_i64();
+					let ptr = stack.pop().unwrap().to_i64() as usize;
+					for i in 0..8 {
+						memory[ptr + i] = (val & (0xFF << (7 - i))) as u8
+					}
+				}
+				| Nop => unreachable!(),
+				| Cast(typ) => {
+					let stack_val = stack.pop().unwrap();
+					stack.push(match typ {
+						| Type::I64 => Data::I64(stack_val.to_i64()),
+						| Type::F64 => {
+							Data::F64(f64::from_ne_bytes(
+								stack_val.to_i64().to_ne_bytes(),
+							))
+						}
+						| Type::Bool => Data::Bool(stack_val.to_i64() != 0),
+						| Type::Ptr => Data::Ptr(stack_val.to_i64()),
+					})
+				}
 			}
 			ip += 1;
 		}

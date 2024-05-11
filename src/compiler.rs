@@ -9,7 +9,7 @@ use std::{
 
 use crate::{
 	annotation::Type,
-	parser::{Op, Program},
+	parser::{Op, OpType, Program},
 	Cli,
 };
 //#endregion
@@ -29,16 +29,13 @@ write:
 dump_b:
 	pop 	rbp
     mov 	rdi, 1
-	mov 	rdx, 5
+	mov 	rdx, 6
 	mov 	rsi, true_str
 	pop 	rax
 	test	rax, rax
 	mov 	rax, false_str
 	cmovz	rsi, rax
 	call	write
-	mov 	rsi, new_line
-	mov 	rdx, 1
-	call 	write
 	push 	rbp
 	ret
 
@@ -57,8 +54,7 @@ global _start
 _start:
 	pop		rax
 	mov		qword[argc], rax
-	pop		rax
-	mov		qword[argv], rax
+	mov		qword[argv], rsp
 
 "#;
 
@@ -70,9 +66,8 @@ const ASM_EXIT_DATA: &str = "
 section .data
 argc: dq 0
 argv: dq 0
-true_str: db 'true', 0
-false_str: db 'false', 0
-new_line: db 10
+true_str: db 'true', 10, 0
+false_str: db 'false', 10, 0
 ";
 //#endregion
 
@@ -86,7 +81,7 @@ fn escape_string(lit: &str) -> String {
 		.replace('`', "\\`")
 }
 
-impl Program<'_> {
+impl Program {
 	pub fn compile(&mut self, cli: &Cli<String>) -> Result<(), io::Error> {
 		let output_path = Path::new(cli.output_path.as_str());
 		let dir = output_path.parent().unwrap_or(Path::new("/"));
@@ -216,31 +211,32 @@ impl Program<'_> {
 	}
 }
 
-impl Op<'_> {
+impl Op {
 	fn to_asm(
 		&self,
 		cli: &Cli<String>,
 		labels: &mut HashMap<String, i64>,
 		strings: &[String],
 	) -> String {
-		match self {
-			| Op::PushI(i, _) => format!(";PUSH {}\n\tpush\t{}\n", i, i),
-			| Op::PushF(f, _) => {
+		use OpType::*;
+		match self.typ.clone() {
+			| PushI(i) => format!(";PUSH {}\n\tpush\t{}\n", i, i),
+			| PushF(f) => {
 				format!(";PUSH {}\n\tmov \trax, __float64__({:?})\n\tpush\trax\n", f, f)
 			}
-			| Op::PushB(b, _) => {
-				format!(";PUSH {}\n\tpush\t{}\n\tpush\trax\n", b, *b as u8)
+			| PushB(b) => {
+				format!(";PUSH {}\n\tpush\t{}\n\tpush\trax\n", b, b as u8)
 			}
-			| Op::PushStr(s, _) => {
+			| PushStr(s) => {
 				let idx = strings
 					.iter()
 					.enumerate()
-					.find_map(|(idx, lit)| if s == lit { Some(idx) } else { None })
+					.find_map(|(idx, lit)| if s == *lit { Some(idx) } else { None })
 					.unwrap();
 				format!(";PUSH {s}\n\tmov \trax, STR_LIT_{idx}\n\tpush\trax\n")
 			}
-			| Op::Dump(a) => {
-				match a.get_type().unwrap() {
+			| Dump(typ) => {
+				match typ {
 					| Type::F64 => {
 						";DUMP_F\n\tpop \trdi\n\tmovq\txmm0, rdi\n\tcall\t".to_string()
 							+ if cli.rounding { "dump_f_rounded\n" } else { "dump_f\n" }
@@ -251,9 +247,9 @@ impl Op<'_> {
 					| Type::Bool => ";DUMP_B\n\tcall\tdump_b\n".to_string(),
 				}
 			}
-			| Op::Add(a, b) => {
+			| Add(a, b) => {
 				";ADD\n".to_string()
-					+ match (a.get_type().unwrap(), b.get_type().unwrap()) {
+					+ match (a, b) {
 						| (Type::I64, Type::F64) => {
 							"\tpop \trdi\n\tcall\ti64tof64\n\tmovq\txmm1, \
 							 [rsp]\n\taddsd\txmm1, xmm0\n\tmovq\t[rsp], xmm1\n"
@@ -269,9 +265,9 @@ impl Op<'_> {
 						| (..) => "\tpop \trdi\n\tadd \t[rsp], rdi\n",
 					}
 			}
-			| Op::Sub(a, b) => {
+			| Sub(a, b) => {
 				";SUB\n".to_string()
-					+ match (a.get_type().unwrap(), b.get_type().unwrap()) {
+					+ match (a, b) {
 						| (Type::I64, Type::F64) => {
 							"\tpop \trdi\n\tcall\ti64tof64\n\tmovq\txmm1, \
 							 [rsp]\n\tsubsd\txmm1, xmm0\n\tmovq\t[rsp], xmm1\n"
@@ -287,9 +283,9 @@ impl Op<'_> {
 						| (..) => "\tpop \trdi\n\tsub \t[rsp], rdi\n",
 					}
 			}
-			| Op::Mul(a, b) => {
+			| Mul(a, b) => {
 				";MUL\n".to_string()
-					+ match (a.get_type().unwrap(), b.get_type().unwrap()) {
+					+ match (a, b) {
 						| (Type::I64, Type::F64) => {
 							"\tpop \trdi\n\tcall\ti64tof64\n\tmovq\txmm1, \
 							 [rsp]\n\tmulsd\txmm1, xmm0\n\tmovq\t[rsp], xmm1\n"
@@ -307,9 +303,9 @@ impl Op<'_> {
 						}
 					}
 			}
-			| Op::Div(a, b) => {
+			| Div(a, b) => {
 				";ADD\n".to_string()
-					+ match (a.get_type().unwrap(), b.get_type().unwrap()) {
+					+ match (a, b) {
 						| (Type::I64, Type::F64) => {
 							"\tpop \trdi\n\tcall\ti64tof64\n\tmovq\txmm1, \
 							 [rsp]\n\tdivsd\txmm1, xmm0\n\tmovq\t[rsp], xmm1\n"
@@ -327,13 +323,13 @@ impl Op<'_> {
 						}
 					}
 			}
-			| Op::Mod(..) => {
+			| Mod(..) => {
 				";MOD\n\tpop \trdi\n\tpop \trax\n\tcqo\n\tidiv \trdi\n\tpush\trdx\n"
 					.into()
 			}
-			| Op::Increment(a) => {
+			| Increment(typ) => {
 				";INC\n".to_string()
-					+ match a.get_type().unwrap() {
+					+ match typ {
 						| Type::F64 => {
 							"\tmov\trax, __float64__(1.0)\n\tmovq\txmm0, \
 							 rax\n\taddsd\txmm0, [rsp]\n\tmovq\t[rsp], xmm0\n"
@@ -341,9 +337,9 @@ impl Op<'_> {
 						| _ => "\tinc qword[rsp]\n",
 					}
 			}
-			| Op::Decrement(a) => {
+			| Decrement(typ) => {
 				";DEC\n".to_string()
-					+ match a.get_type().unwrap() {
+					+ match typ {
 						| Type::F64 => {
 							"\tmov\trax, __float64__(1.0)\n\tmovq\txmm0, \
 							 rax\n\tsubsd\txmm0, [rsp]\n\tmovq\t[rsp], xmm0\n"
@@ -351,14 +347,14 @@ impl Op<'_> {
 						| _ => "\tdec qword[rsp]\n",
 					}
 			}
-			| Op::Drop(n, _) => format!(";DROP{n}\n\tadd \trsp, {}\n", n * 8),
-			| Op::Swap(_) => {
+			| Drop(n) => format!(";DROP{n}\n\tadd \trsp, {}\n", n * 8),
+			| Swap => {
 				";SWAP\n\tpop \trax\n\tpop \trbx\n\tpush\trax\n\tpush \trbx\n".to_string()
 			}
-			| Op::Over(n, _) => format!(";OVER{n}\n\tpush\tqword[rsp+{}]\n", 8 * n),
-			| Op::Dup(n, _) => {
-				if *n < 6 {
-					(0..*n).fold(format!(";DUP{n}"), |acc, _| {
+			| Over(n) => format!(";OVER{n}\n\tpush\tqword[rsp+{}]\n", 8 * n),
+			| Dup(n) => {
+				if n < 6 {
+					(0..n).fold(format!(";DUP{n}"), |acc, _| {
 						acc + format!(";DUP\n\tpush\tqword[rsp+{}]\n", 8 * (n - 1))
 							.as_str()
 					})
@@ -375,30 +371,28 @@ impl Op<'_> {
 					)
 				}
 			}
-			| Op::If(..) => ";IF\n".into(),
-			| Op::Then(label, else_, _) => {
+			| If(..) => ";IF\n".into(),
+			| Then(label, else_) => {
 				format!(
 					";THEN\n\tpop \trax\n\ttest\trax, rax\n\tjz \t{}\n",
-					if *else_ { format!("ELSE_{label}") } else { format!("END_{label}") }
+					if else_ { format!("ELSE_{label}") } else { format!("END_{label}") }
 				)
 			}
-			| Op::Else(label, _) => {
-				format!(";ELSE\n\tjmp \tEND_{label}\nELSE_{label}:\n")
-			}
-			| Op::End(label, while_, _) => {
+			| Else(label) => format!(";ELSE\n\tjmp \tEND_{label}\nELSE_{label}:\n"),
+			| End(label, while_) => {
 				format!(
 					";END\n{}END_{}{label}:\n",
-					if *while_ { format!("\tjmp \tWHILE_{label}\n") } else { "".into() },
-					if *while_ { "WHILE_" } else { "" }
+					if while_ { format!("\tjmp \tWHILE_{label}\n") } else { "".into() },
+					if while_ { "WHILE_" } else { "" }
 				)
 			}
-			| Op::While(label, _) => format!("WHILE_{label}:\n"),
-			| Op::Do(label, _) => {
+			| While(label) => format!("WHILE_{label}:\n"),
+			| Do(label) => {
 				format!(";DO\n\tpop \trax\n\ttest\trax, rax\n\tjz \tEND_WHILE_{label}\n")
 			}
-			| Op::Eq(annot_l, annot_r) => {
+			| Eq(type_l, type_r) => {
 				";Eq\n\t".to_string()
-					+ match (annot_l.get_type().unwrap(), annot_r.get_type().unwrap()) {
+					+ match (type_l, type_r) {
 						| (Type::F64, Type::F64) => {
 							"movq\txmm1, qword[rsp]\n\tadd \trsp, 8\n\tmovq\txmm0, \
 							 qword[rsp]\n\tcmppd\txmm0, xmm1, 0\n\tcall\ttest_xmm0\n"
@@ -419,9 +413,9 @@ impl Op<'_> {
 						}
 					}
 			}
-			| Op::Neq(annot_l, annot_r) => {
+			| Neq(type_l, type_r) => {
 				";Neq\n\t".to_string()
-					+ match (annot_l.get_type().unwrap(), annot_r.get_type().unwrap()) {
+					+ match (type_l, type_r) {
 						| (Type::F64, Type::F64) => {
 							"movq\txmm1, qword[rsp]\n\tadd \trsp, 8\n\tmovq\txmm0, \
 							 qword[rsp]\n\tcmppd\txmm0, xmm1, 4\n\tcall\ttest_xmm0\n"
@@ -442,9 +436,9 @@ impl Op<'_> {
 						}
 					}
 			}
-			| Op::Lt(annot_l, annot_r) => {
+			| Lt(type_l, type_r) => {
 				";Lt\n\t".to_string()
-					+ match (annot_l.get_type().unwrap(), annot_r.get_type().unwrap()) {
+					+ match (type_l, type_r) {
 						| (Type::F64, Type::F64) => {
 							"movq\txmm1, qword[rsp]\n\tadd \trsp, 8\n\tmovq\txmm0, \
 							 qword[rsp]\n\tcmppd\txmm0, xmm1, 1\n\tcall\ttest_xmm0\n"
@@ -465,9 +459,9 @@ impl Op<'_> {
 						}
 					}
 			}
-			| Op::Gt(annot_l, annot_r) => {
+			| Gt(type_l, type_r) => {
 				";Gt\n\t".to_string()
-					+ match (annot_l.get_type().unwrap(), annot_r.get_type().unwrap()) {
+					+ match (type_l, type_r) {
 						| (Type::F64, Type::F64) => {
 							"movq\txmm1, qword[rsp]\n\tadd \trsp, 8\n\tmovq\txmm0, \
 							 qword[rsp]\n\tcmppd\txmm0, xmm1, 0Eh\n\tcall\ttest_xmm0\n"
@@ -488,9 +482,9 @@ impl Op<'_> {
 						}
 					}
 			}
-			| Op::Lte(annot_l, annot_r) => {
+			| Lte(type_l, type_r) => {
 				";Lte\n\t".to_string()
-					+ match (annot_l.get_type().unwrap(), annot_r.get_type().unwrap()) {
+					+ match (type_l, type_r) {
 						| (Type::F64, Type::F64) => {
 							"movq\txmm1, qword[rsp]\n\tadd \trsp, 8\n\tmovq\txmm0, \
 							 qword[rsp]\n\tcmppd\txmm0, xmm1, 2\n\tcall\ttest_xmm0\n"
@@ -511,9 +505,9 @@ impl Op<'_> {
 						}
 					}
 			}
-			| Op::Gte(annot_l, annot_r) => {
+			| Gte(type_l, type_r) => {
 				";Gte\n\t".to_string()
-					+ match (annot_l.get_type().unwrap(), annot_r.get_type().unwrap()) {
+					+ match (type_l, type_r) {
 						| (Type::F64, Type::F64) => {
 							"movq\txmm1, qword[rsp]\n\tadd \trsp, 8\n\tmovq\txmm0, \
 							 qword[rsp]\n\tcmppd\txmm0, xmm1, 0Dh\n\tcall\ttest_xmm0\n"
@@ -534,17 +528,37 @@ impl Op<'_> {
 						}
 					}
 			}
-			| Op::Syscall(syscode, argc, _) => {
-				(0..*argc).rev().fold(";Syscall\n\t".to_string(), |acc, idx| {
+			| Syscall(syscode, argc) => {
+				(0..argc).rev().fold(";Syscall\n\t".to_string(), |acc, idx| {
 					format!("{acc}pop \t{}\n\t", SYSCALL_REGS[idx])
 				}) + format!("mov \trax, {syscode}\n\tsyscall\n\tpush\trax\n").as_str()
 			}
-			| Op::Argc(_) => ";Argc\n\tpush\tqword[argc]\n".into(),
-			| Op::Argv(_) => ";Argv\n\tpush\tqword[argv]\n".into(),
-			| Op::Deref(_) => {
-				";Deref\n\tmov \trax, qword[rsp]\n\tmov\tqword[rsp], qword[rax]\n".into()
+			| Argc => ";Argc\n\tpush\tqword[argc]\n".into(),
+			| Argv => ";Argv\n\tpush\tqword[argv]\n".into(),
+			| Load8 => {
+				";Load8\n\tpop \trax\n\tmovzx\trax, byte[rax]\n\tpush\trax\n".into()
 			}
-			| Op::Nop => unreachable!(),
+			| Load16 => {
+				";Load16\n\tpop \trax\n\tmovzx\trax, word[rax]\n\tpush\trax\n".into()
+			}
+			| Load32 => {
+				";Load32\n\tpop \trax\n\tmovzx\trax, dword[rax]\n\tpush\trax\n".into()
+			}
+			| Load64 => ";Load64\n\tpop \trax\n\tpush\tqword[rax]\n".into(),
+			| Store8 => {
+				";Store8\n\tpop \trbx\n\tpop \trax\n\tmov\tbyte[rax], bl\n".into()
+			}
+			| Store16 => {
+				";Store16\n\tpop \trbx\n\tpop \trax\n\tmov\tword[rax], bx\n".into()
+			}
+			| Store32 => {
+				";Store32\n\tpop \trbx\n\tpop \trax\n\tmov\tdword[rax], ebx\n".into()
+			}
+			| Store64 => {
+				";Store64\n\tpop \trbx\n\tpop \trax\n\tmov\tqword[rax], rbx\n".into()
+			}
+			| Nop => unreachable!(),
+			| Cast(_) => "".into(),
 		}
 	}
 }

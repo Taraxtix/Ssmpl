@@ -11,6 +11,7 @@ use std::{env::args, path::Path, process::Command};
 use lexer::Lexer;
 use report::{Level, Reporter};
 
+#[derive(Clone)]
 enum Mode {
 	Com,
 	Sim,
@@ -31,6 +32,7 @@ impl TryFrom<Option<String>> for Mode {
 	}
 }
 
+#[derive(Clone)]
 struct Cli<S: Into<String>> {
 	program_path: S,
 	input_path:   S,
@@ -136,9 +138,8 @@ fn main() {
 	}
 	reporter.exit_if(Level::Error, 1);
 
-	let mut program = Lexer::new(input.as_slice(), &cli.input_path, reporter.clone())
-		.parse()
-		.type_check();
+	let lexer = Lexer::new(input.to_vec(), cli.clone().input_path, reporter.clone());
+	let mut program = lexer.parse().type_check();
 	match cli.mode {
 		| Mode::Com => {
 			program.compile(&cli).unwrap_or_else(|e| {

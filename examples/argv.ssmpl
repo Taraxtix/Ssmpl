@@ -1,0 +1,9 @@
+include "stdlib/strings.ssmpl"
+include "stdlib/io.ssmpl"
+
+argv argc
+while dup do
+	over <|64 cast(Ptr) println
+	swap 8 + swap
+	--
+end
