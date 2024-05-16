@@ -115,7 +115,7 @@ impl Program {
 		};
 
 		if !self.command(format!(
-			"ld {} {} -o {}",
+			"ld {} {} -o {} --no-warn-execstack",
 			o_file_path.display(),
 			aux_o_file_path.display(),
 			output_path.display()

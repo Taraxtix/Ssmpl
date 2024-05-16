@@ -93,12 +93,15 @@ impl Reporter {
 	}
 
 	pub fn flush(&mut self) -> &mut Self {
-		self.reports
-			.iter_mut()
-			.filter(|x| x.level >= self.min_level)
-			.collect::<Vec<_>>()
-			.sort_by_key(|x| x.level.clone());
-		for report in self.reports.clone() {
+		let mut selected_reports = self
+			.reports
+			.iter()
+			.filter_map(
+				|x| if x.level >= self.min_level { Some(x.clone()) } else { None },
+			)
+			.collect::<Vec<_>>();
+		selected_reports.sort_by_key(|x| x.level.clone());
+		for report in selected_reports {
 			self.report(&report).unwrap();
 		}
 		self.stdout.flush().unwrap();
