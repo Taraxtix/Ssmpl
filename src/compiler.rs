@@ -557,8 +557,27 @@ impl Op {
 			| Store64 => {
 				";Store64\n\tpop \trbx\n\tpop \trax\n\tmov\tqword[rax], rbx\n".into()
 			}
-			| Nop => unreachable!(),
+			| Cast(Type::Bool) => {
+				";Cast(Bool)\n\tcmp \tqword[rsp], 0\n\tsetne\t[rsp]\n".into()
+			}
 			| Cast(_) => "".into(),
+			| ShiftR => ";ShiftR\n\tpop \trcx\n\tshr \tqword[rsp], cl\n".into(),
+			| ShiftL => ";ShiftL\n\tpop \trcx\n\tshl \tqword[rsp], cl\n".into(),
+			| BitAnd => ";BitAnd\n\tpop \trax\n\tand \tqword[rsp], rax\n".into(),
+			| BitOr => ";BitOr\n\tpop \trax\n\tor \tqword[rsp], rax\n".into(),
+			| And => {
+				";And\n\tpop \trax\n\tand \tqword[rsp], rax\n\tmov \trax, 1\n\txor \
+				 \tr15, r15\n\tcmp \tqword[rsp], 0\n\tcmove\trax, r15\n\tmov \
+				 \tqword[rsp], rax\n"
+					.into()
+			}
+			| Or => {
+				";Or\n\tpop \trax\n\tor  \tqword[rsp], rax\n\tmov \trax, 1\n\txor \tr15, \
+				 r15\n\tcmp \tqword[rsp], 0\n\tcmove\trax, r15\n\tmov \tqword[rsp], rax\n"
+					.into()
+			}
+			| Not => ";Not\n\tnot \tqword[rsp]\n".into(),
+			| Nop => unreachable!(),
 		}
 	}
 }

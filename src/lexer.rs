@@ -84,6 +84,13 @@ pub enum TokenType {
 	TypeF64,
 	TypeBool,
 	TypePtr,
+	ShiftR,
+	ShiftL,
+	Or,
+	BitOr,
+	And,
+	BitAnd,
+	Not,
 }
 
 impl Display for TokenType {
@@ -141,6 +148,13 @@ impl Display for TokenType {
 			| TypeF64 => write!(f, "F64"),
 			| TypeBool => write!(f, "Bool"),
 			| TypePtr => write!(f, "Ptr"),
+			| ShiftR => write!(f, ">>"),
+			| ShiftL => write!(f, "<<"),
+			| BitOr => write!(f, "||"),
+			| Or => write!(f, "|"),
+			| BitAnd => write!(f, "&&"),
+			| And => write!(f, "&"),
+			| Not => write!(f, "!"),
 		}
 	}
 }
@@ -369,6 +383,13 @@ impl Iterator for Lexer {
 				| "F64" => TypeF64,
 				| "Bool" => TypeBool,
 				| "Ptr" => TypePtr,
+				| ">>" => ShiftR,
+				| "<<" => ShiftL,
+				| "||" => Or,
+				| "|" => BitOr,
+				| "&&" => And,
+				| "&" => BitAnd,
+				| "!" => Not,
 				| lit => {
 					match self.lex_number(lit) {
 						| Ok(Some(typ)) => return Some(typ.clone()),

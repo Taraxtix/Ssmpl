@@ -51,6 +51,13 @@ pub enum OpType {
 	Store64,
 	Cast(Type),
 	Nop,
+	ShiftR,
+	ShiftL,
+	BitAnd,
+	And,
+	BitOr,
+	Or,
+	Not,
 }
 
 #[derive(Clone)]
@@ -66,9 +73,10 @@ impl Op {
 			| Drop(..) | Over(..) | Dup(..) | Then(..) | Else(..) | End(..)
 			| While(..) | Do(..) | PushI(..) | PushF(..) | PushB(..) | Nop | If(..)
 			| Cast(_) | PushStr(..) | Syscall(..) | Argc | Argv => unreachable!(),
-			| Increment(_) | Decrement(_) | Dump(_) => &["_"],
-			| Swap | Mod(..) | Add(..) | Sub(..) | Mul(..) | Div(..) | Eq(..)
-			| Neq(..) | Lt(..) | Gt(..) | Lte(..) | Gte(..) => &["_", "_"],
+			| ShiftR | ShiftL => &["I64", "_"],
+			| Not | Increment(_) | Decrement(_) | Dump(_) => &["_"],
+			| Swap | Mod(..) | Add(..) | Sub(..) | Mul(..) | Div(..) | Eq(..) | And
+			| Or | Neq(..) | Lt(..) | Gt(..) | Lte(..) | BitAnd | BitOr | Gte(..) => &["_", "_"],
 			| Store8 | Store16 | Store32 | Store64 => &["Ptr", "_"],
 			| Load8 | Load16 | Load32 | Load64 => &["Ptr"],
 		}
@@ -120,6 +128,13 @@ impl Display for OpType {
 			| Store32 => write!(f, "Store8"),
 			| Store64 => write!(f, "Store8"),
 			| Cast(typ) => write!(f, "Cast({typ})"),
+			| ShiftR => write!(f, "ShiftR"),
+			| ShiftL => write!(f, "ShiftL"),
+			| And => write!(f, "And"),
+			| Or => write!(f, "Or"),
+			| Not => write!(f, "Not"),
+			| BitAnd => write!(f, "BitAnd"),
+			| BitOr => write!(f, "BitOr"),
 		}
 	}
 }
@@ -280,6 +295,13 @@ impl Parser {
 				parsed_include.ops
 			}
 			| T::Cast => vec![Op { typ: O::Cast(self.expect_type_arg(ops)), annot }],
+			| T::ShiftR => vec![Op { typ: O::ShiftR, annot }],
+			| T::ShiftL => vec![Op { typ: O::ShiftL, annot }],
+			| T::Or => vec![Op { typ: O::Or, annot }],
+			| T::BitOr => vec![Op { typ: O::BitOr, annot }],
+			| T::And => vec![Op { typ: O::And, annot }],
+			| T::BitAnd => vec![Op { typ: O::BitAnd, annot }],
+			| T::Not => vec![Op { typ: O::Not, annot }],
 			| T::TypeI64
 			| T::TypeF64
 			| T::TypeBool

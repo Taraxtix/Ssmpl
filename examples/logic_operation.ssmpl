@@ -1,0 +1,7 @@
+// 1 is equivalent to true
+// 0 is equivalent to false
+
+1 1 && dump
+1 0 && dump
+0 1 || dump
+0 0 || dump

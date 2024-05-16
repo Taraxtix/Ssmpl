@@ -23,6 +23,21 @@ impl Data {
 			| Data::F64(v) => i64::from_ne_bytes(v.to_ne_bytes()),
 		}
 	}
+
+	fn to_bool(&self) -> bool {
+		match self {
+			| Data::Ptr(v) | Data::I64(v) => *v != 0,
+			| Data::F64(v) => *v != 0.,
+			| Data::Bool(v) => *v,
+		}
+	}
+
+	fn bytes_to_data_f64(&self) -> Data {
+		match self {
+			| Data::F64(v) => Data::F64(*v),
+			| a => Data::F64(f64::from_ne_bytes(a.to_i64().to_ne_bytes())),
+		}
+	}
 }
 
 #[derive(Default)]
@@ -446,7 +461,6 @@ impl Program {
 						memory[ptr + i] = (val & (0xFF << (7 - i))) as u8
 					}
 				}
-				| Nop => unreachable!(),
 				| Cast(typ) => {
 					let stack_val = stack.pop().unwrap();
 					stack.push(match typ {
@@ -460,6 +474,79 @@ impl Program {
 						| Type::Ptr => Data::Ptr(stack_val.to_i64()),
 					})
 				}
+				| ShiftR => {
+					match (stack.pop().unwrap(), stack.pop().unwrap()) {
+						| (Data::I64(v1), Data::I64(v2)) => {
+							stack.push(Data::I64(v2 >> v1))
+						}
+						| (Data::I64(v1), Data::F64(v2)) => {
+							stack.push(
+								Data::I64(Data::F64(v2).to_i64() >> v1)
+									.bytes_to_data_f64(),
+							)
+						}
+						| (Data::I64(v1), Data::Bool(v2)) => {
+							stack.push(Data::Bool((v2 as i64 >> v1) != 0))
+						}
+						| (Data::I64(v1), Data::Ptr(v2)) => {
+							stack.push(Data::Ptr(v2 >> v1))
+						}
+						| _ => unreachable!("Prevented by type check"),
+					}
+				}
+				| ShiftL => {
+					match (stack.pop().unwrap(), stack.pop().unwrap()) {
+						| (Data::I64(v1), Data::I64(v2)) => {
+							stack.push(Data::I64(v2 << v1))
+						}
+						| (Data::I64(v1), Data::F64(v2)) => {
+							stack.push(
+								Data::I64(Data::F64(v2).to_i64() << v1)
+									.bytes_to_data_f64(),
+							)
+						}
+						| (Data::I64(v1), Data::Bool(v2)) => {
+							stack.push(Data::Bool(((v2 as i64) << v1) != 0))
+						}
+						| (Data::I64(v1), Data::Ptr(v2)) => {
+							stack.push(Data::Ptr(v2 << v1))
+						}
+						| _ => unreachable!("Prevented by type check"),
+					}
+				}
+				| BitAnd => {
+					let v2 = stack.pop().unwrap().to_i64();
+					let v1 = stack.pop().unwrap().to_i64();
+					stack.push(Data::I64(v1 & v2))
+				}
+				| BitOr => {
+					let v2 = stack.pop().unwrap().to_i64();
+					let v1 = stack.pop().unwrap().to_i64();
+					stack.push(Data::I64(v1 | v2))
+				}
+				| And => {
+					let v2 = stack.pop().unwrap().to_bool();
+					let v1 = stack.pop().unwrap().to_bool();
+					stack.push(Data::Bool(v1 && v2))
+				}
+				| Or => {
+					let v2 = stack.pop().unwrap().to_bool();
+					let v1 = stack.pop().unwrap().to_bool();
+					stack.push(Data::Bool(v1 || v2))
+				}
+				| Not => {
+					match stack.pop().unwrap() {
+						| Data::I64(v) => stack.push(Data::I64(!v)),
+						| Data::F64(v) => {
+							stack.push(
+								Data::I64(Data::F64(v).to_i64()).bytes_to_data_f64(),
+							)
+						}
+						| Data::Bool(v) => stack.push(Data::Bool(!v)),
+						| Data::Ptr(v) => stack.push(Data::Ptr(!v)),
+					}
+				}
+				| Nop => unreachable!(),
 			}
 			ip += 1;
 		}

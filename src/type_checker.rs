@@ -516,7 +516,6 @@ impl Program {
 						| _ => self.wrong_arg(&[ptr, val], debug_op, stack.clone()),
 					}
 				}
-				| Nop => unreachable!(),
 				| Cast(typ) => {
 					let stack_val = stack.last_mut().unwrap_or_else(|| {
 						self.add_error(format!(
@@ -527,6 +526,46 @@ impl Program {
 					});
 					stack_val.set_type(*typ);
 				}
+				| ShiftR | ShiftL => {
+					match (stack.pop(), stack.pop()) {
+						| (Some(a), Some(b)) if a.get_type().unwrap() == &Type::I64 => {
+							stack.push(annot.clone().with_type(*b.get_type().unwrap()));
+						}
+						| (a, b) => self.wrong_arg(&[a, b], debug_op, stack.clone()),
+					}
+				}
+				| BitAnd | BitOr => {
+					match (stack.pop(), stack.pop()) {
+						| (Some(a), Some(b)) => {
+							if a.get_type() == b.get_type() {
+								stack.push(
+									annot.clone().with_type(*a.get_type().unwrap()),
+								);
+							} else {
+								self.check_implicit_conversion(&b, &Type::I64);
+								stack.push(annot.clone().with_type(Type::I64));
+							}
+						}
+						| (a, b) => self.wrong_arg(&[a, b], debug_op, stack.clone()),
+					}
+				}
+				| And | Or => {
+					let b = stack.pop();
+					let a = stack.pop();
+					if !(a.is_some() && b.is_some()) {
+						self.wrong_arg(&[a, b], debug_op, stack.clone())
+					}
+					stack.push(annot.clone().with_type(Type::Bool));
+				}
+				| Not => {
+					let arg = stack.pop();
+					if let Some(arg) = arg {
+						stack.push(annot.clone().with_type(*arg.get_type().unwrap()));
+					} else {
+						self.wrong_arg(&[None], debug_op, stack.clone())
+					}
+				}
+				| Nop => unreachable!(),
 			}
 		});
 
