@@ -58,6 +58,7 @@ pub enum OpType {
 	BitOr,
 	Or,
 	Not,
+	Mem,
 }
 
 #[derive(Clone)]
@@ -72,7 +73,7 @@ impl Op {
 		match self.typ {
 			| Drop(..) | Over(..) | Dup(..) | Then(..) | Else(..) | End(..)
 			| While(..) | Do(..) | PushI(..) | PushF(..) | PushB(..) | Nop | If(..)
-			| Cast(_) | PushStr(..) | Syscall(..) | Argc | Argv => unreachable!(),
+			| Cast(_) | PushStr(..) | Syscall(..) | Argc | Argv | Mem => unreachable!(),
 			| ShiftR | ShiftL => &["I64", "_"],
 			| Not | Increment(_) | Decrement(_) | Dump(_) => &["_"],
 			| Swap | Mod(..) | Add(..) | Sub(..) | Mul(..) | Div(..) | Eq(..) | And
@@ -135,6 +136,7 @@ impl Display for OpType {
 			| Not => write!(f, "Not"),
 			| BitAnd => write!(f, "BitAnd"),
 			| BitOr => write!(f, "BitOr"),
+			| Mem => write!(f, "Mem"),
 		}
 	}
 }
@@ -313,6 +315,7 @@ impl Parser {
 				self.add_error(format!("{}: Unexpected token: {typ}", annot.get_pos()))
 					.exit(1)
 			}
+			| T::Mem => vec![Op { typ: O::Mem, annot }],
 		}
 	}
 

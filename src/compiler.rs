@@ -68,6 +68,9 @@ argc: dq 0
 argv: dq 0
 true_str: db 'true', 10, 0
 false_str: db 'false', 10, 0
+
+section .bss
+free_mem: resb 1024
 ";
 //#endregion
 
@@ -577,6 +580,7 @@ impl Op {
 					.into()
 			}
 			| Not => ";Not\n\tnot \tqword[rsp]\n".into(),
+			| Mem => "push free_mem\n".into(),
 			| Nop => unreachable!(),
 		}
 	}

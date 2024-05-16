@@ -23,6 +23,13 @@ Some types can implicitly be casted to other types at compiled time.
 - `f64` can be casted from `i64` and `bool`
 - `ptr` can be casted from `i64`
 
+### Explicit casting
+
+`cast(TYPE)` cast the top element of the stack to the given type.
+
+With explicit casting you can cast any type to any other type.
+Casting to `bool` alter the bits of the value while any other cast only affect the behavior of future operations.
+
 ### --Comments--
 
 Comments will use `//` for line comments and `/*` and `*/` for block comments as a delimiter.
@@ -316,3 +323,61 @@ macro NAME {
 file path is relative to where the compiler is executed. (I will try to make it relative to the file in the future)
 
 Parse the file and append everything it contains to main program
+
+### --Logical Operation--
+
+#### --Logical And--
+
+`&&` If the first two element of the stack evaluates to `true` then `true` is pushed to the stack, otherwise `false` is pushed.
+
+```rust
+let b = pop();
+let a = pop();
+push(a && b);
+```
+
+#### --Logical Or--a
+
+`||` If one of the first two element of the stack evaluates to `true` then `true` is pushed to the stack, otherwise `false` is pushed.
+
+```rust
+let b = pop();
+let a = pop();
+push(a || b);
+```
+
+### --Bitwise Operation--
+
+#### --Bitwise And--
+
+`&` Pushes the bitwise AND of the top two elements of the stack to the stack.
+
+#### --Bitwise Or--
+
+`|` Pushes the bitwise OR of the top two elements of the stack to the stack.
+
+#### --Shift Left--
+
+`<<` Pushes the second element of the stack shifted left by the top element of the stack.
+
+```rust
+let b = pop();
+let a = pop();
+push(a << b);
+```
+
+#### --Shift Right--
+
+`>>` Pushes the second element of the stack shifted right by the top element of the stack.
+
+```rust
+let b = pop();
+let a = pop();
+push(a >> b);
+```
+
+### --Free Memory--
+
+Ssmpl has 1024 bytes of free memory which you can do whatever you want with.
+
+`mem` pushes the pointer to the start of the free memory.

@@ -546,6 +546,7 @@ impl Program {
 						| Data::Ptr(v) => stack.push(Data::Ptr(!v)),
 					}
 				}
+				| Mem => stack.push(Data::Ptr(string_end as i64)),
 				| Nop => unreachable!(),
 			}
 			ip += 1;

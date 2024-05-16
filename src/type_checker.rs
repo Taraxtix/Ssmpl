@@ -565,6 +565,7 @@ impl Program {
 						self.wrong_arg(&[None], debug_op, stack.clone())
 					}
 				}
+				| Mem => stack.push(annot.clone().with_type(Type::Ptr)),
 				| Nop => unreachable!(),
 			}
 		});
