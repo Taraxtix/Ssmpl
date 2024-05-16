@@ -1,5 +1,12 @@
 include "stdlib/strings.ssmpl"
 
+decla STDIO_tmp_byte 1
+
+macro putc {
+	mem(STDIO_tmp_byte) swap |>8
+	1 mem(STDIO_tmp_byte) 1 syscall(1) drop
+}
+
 macro print {
 	1 swap dup strlen syscall(1) drop
 }

@@ -335,6 +335,48 @@ impl Iterator for Lexer {
 			self.skip_n(1);
 			return Some(Token { typ: StringLit(lit), annot: self.get_annot() });
 		}
+		if self.at() == '\'' {
+			self.skip_n(1);
+			let escaped = if self.at() == '\\' {
+				self.skip_n(1);
+				true
+			} else {
+				false
+			};
+			if ['\n', '\r', '\0'].contains(&self.at()) {
+				self.add_error(format!(
+					"{}: Unterminated character literal",
+					self.get_pos()
+				))
+				.exit(1)
+			}
+			let mut lit = self.at();
+			self.skip_n(1);
+			if self.at() != '\'' {
+				self.add_error(format!(
+					"{}: Unterminated or too long character literal",
+					self.get_pos()
+				))
+				.exit(1)
+			}
+			self.skip_n(1);
+			if escaped {
+				lit = match lit {
+					| 'n' => '\n',
+					| 'r' => '\r',
+					| 't' => '\t',
+					| '0' => '\0',
+					| c => {
+						self.add_error(format!(
+							"{}: Invalid escape sequence in character literal: \\{c}",
+							self.get_pos()
+						))
+						.exit(1)
+					}
+				};
+			}
+			return Some(Token { typ: IntLit(lit as i64), annot: self.get_annot() });
+		}
 
 		let lit = self.take_word();
 		Some(Token {

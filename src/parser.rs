@@ -302,11 +302,23 @@ impl Parser {
 					});
 				let parsed_include = Parser::new(Lexer::new(
 					included_program_content.chars().collect(),
-					path,
+					path.clone(),
 					self.reporter.clone(),
 				));
 				self.macros.extend(parsed_include.macros);
 				self.strings.extend(parsed_include.strings);
+
+				for (name, size) in parsed_include.memory_regions.iter() {
+					if self.memory_regions.contains_key(name) {
+						self.add_error(format!(
+							"Duplicate memory region: {name} from included file: {path}",
+						))
+						.exit(1);
+					} else {
+						self.memory_regions.insert(name.clone(), *size);
+					}
+				}
+
 				self.included.extend(parsed_include.included);
 				parsed_include.ops
 			}
