@@ -58,7 +58,7 @@ pub enum OpType {
 	BitOr,
 	Or,
 	Not,
-	Mem,
+	Mem(Option<String>),
 }
 
 #[derive(Clone)]
@@ -73,7 +73,7 @@ impl Op {
 		match self.typ {
 			| Drop(..) | Over(..) | Dup(..) | Then(..) | Else(..) | End(..)
 			| While(..) | Do(..) | PushI(..) | PushF(..) | PushB(..) | Nop | If(..)
-			| Cast(_) | PushStr(..) | Syscall(..) | Argc | Argv | Mem => unreachable!(),
+			| Cast(_) | PushStr(..) | Syscall(..) | Argc | Argv | Mem(_) => unreachable!(),
 			| ShiftR | ShiftL => &["I64", "_"],
 			| Not | Increment(_) | Decrement(_) | Dump(_) => &["_"],
 			| Swap | Mod(..) | Add(..) | Sub(..) | Mul(..) | Div(..) | Eq(..) | And
@@ -136,7 +136,7 @@ impl Display for OpType {
 			| Not => write!(f, "Not"),
 			| BitAnd => write!(f, "BitAnd"),
 			| BitOr => write!(f, "BitOr"),
-			| Mem => write!(f, "Mem"),
+			| Mem(_) => write!(f, "Mem"),
 		}
 	}
 }
@@ -149,14 +149,20 @@ impl Display for Op {
 
 #[derive(Clone)]
 pub struct Program {
-	pub ops:      Vec<Op>,
-	pub reporter: Reporter,
-	pub strings:  Vec<String>,
+	pub ops:            Vec<Op>,
+	pub reporter:       Reporter,
+	pub strings:        Vec<String>,
+	pub memory_regions: HashMap<String, i64>,
 }
 
 impl Program {
 	pub fn new(parser: Parser) -> Self {
-		Self { ops: parser.ops, reporter: parser.reporter, strings: parser.strings }
+		Self {
+			ops:            parser.ops,
+			reporter:       parser.reporter,
+			strings:        parser.strings,
+			memory_regions: parser.memory_regions,
+		}
 	}
 
 	pub fn add_error(&mut self, error: String) -> &mut Self {
@@ -174,22 +180,24 @@ impl Program {
 
 #[derive(Clone)]
 pub struct Parser {
-	pub reporter: Reporter,
-	pub ops:      Vec<Op>,
-	pub macros:   HashMap<String, Vec<Op>>,
-	pub strings:  Vec<String>,
-	included:     Vec<String>,
+	pub reporter:       Reporter,
+	pub ops:            Vec<Op>,
+	pub macros:         HashMap<String, Vec<Op>>,
+	pub strings:        Vec<String>,
+	pub memory_regions: HashMap<String, i64>,
+	included:           Vec<String>,
 }
 
 impl Parser {
 	pub fn new(lexer: Lexer) -> Self {
 		let mut ops = lexer.clone().collect::<Vec<_>>();
 		let mut itself = Self {
-			reporter: lexer.reporter,
-			strings:  lexer.strings,
-			ops:      vec![],
-			macros:   HashMap::new(),
-			included: vec![],
+			reporter:       lexer.reporter,
+			strings:        lexer.strings,
+			ops:            vec![],
+			macros:         HashMap::new(),
+			memory_regions: HashMap::new(),
+			included:       vec![],
 		};
 		while !ops.is_empty() {
 			for op in itself.ops_from_first_token(&mut ops) {
@@ -247,11 +255,17 @@ impl Parser {
 			| T::Store32 => vec![Op { typ: O::Store32, annot }],
 			| T::Store64 => vec![Op { typ: O::Store64, annot }],
 			| T::Swap => vec![Op { typ: O::Swap, annot }],
-			| T::Drop => vec![Op { typ: O::Drop(self.expect_optional_arg(ops)), annot }],
-			| T::Over => vec![Op { typ: O::Over(self.expect_optional_arg(ops)), annot }],
-			| T::Dup => vec![Op { typ: O::Dup(self.expect_optional_arg(ops)), annot }],
+			| T::Drop => {
+				vec![Op { typ: O::Drop(self.expect_optional_size_arg(ops)), annot }]
+			}
+			| T::Over => {
+				vec![Op { typ: O::Over(self.expect_optional_size_arg(ops)), annot }]
+			}
+			| T::Dup => {
+				vec![Op { typ: O::Dup(self.expect_optional_size_arg(ops)), annot }]
+			}
 			| T::Syscall => {
-				let arg = self.expect_arg(ops) as usize;
+				let arg = self.expect_size_arg(ops) as usize;
 				vec![Op { typ: O::Syscall(arg, get_arg_count_from_syscode(&arg)), annot }]
 			}
 			| T::Macro => {
@@ -315,7 +329,20 @@ impl Parser {
 				self.add_error(format!("{}: Unexpected token: {typ}", annot.get_pos()))
 					.exit(1)
 			}
-			| T::Mem => vec![Op { typ: O::Mem, annot }],
+			| T::Mem => vec![Op { typ: O::Mem(self.get_optional_id_arg(ops)), annot }],
+			| T::Decla => {
+				let name = self.expect_id(ops);
+				let size = self.expect_int_lit(ops);
+				if self.memory_regions.contains_key(&name) {
+					self.add_error(format!(
+						"{}: Memory region {name} already defined",
+						annot.get_pos()
+					))
+					.exit(1);
+				}
+				self.memory_regions.insert(name, size);
+				self.ops_from_first_token(ops)
+			}
 		}
 	}
 
@@ -340,7 +367,7 @@ impl Parser {
 		}
 	}
 
-	pub fn expect_arg(&mut self, ops: &mut Vec<Token>) -> i64 {
+	pub fn expect_size_arg(&mut self, ops: &mut Vec<Token>) -> i64 {
 		self.expect(ops, TokenType::OParen);
 		if ops.is_empty() {
 			self.add_error("Expected size argument but got nothing".into()).exit(1)
@@ -360,10 +387,10 @@ impl Parser {
 		arg
 	}
 
-	pub fn expect_optional_arg(&mut self, ops: &mut Vec<Token>) -> i64 {
+	pub fn expect_optional_size_arg(&mut self, ops: &mut Vec<Token>) -> i64 {
 		match ops.first() {
 			| Some(Token { typ, .. }) if *typ == TokenType::OParen => {
-				self.expect_arg(ops)
+				self.expect_size_arg(ops)
 			}
 			| _ => 1,
 		}
@@ -403,6 +430,18 @@ impl Parser {
 		}
 	}
 
+	pub fn get_optional_id_arg(&mut self, ops: &mut Vec<Token>) -> Option<String> {
+		match ops.first() {
+			| Some(Token { typ, .. }) if *typ == TokenType::OParen => {
+				self.expect(ops, TokenType::OParen);
+				let id = self.expect_id(ops);
+				self.expect(ops, TokenType::CParen);
+				Some(id)
+			}
+			| _ => None,
+		}
+	}
+
 	pub fn expect_type_arg(&mut self, ops: &mut Vec<Token>) -> Type {
 		self.expect(ops, TokenType::OParen);
 		if ops.is_empty() {
@@ -424,6 +463,23 @@ impl Parser {
 		};
 		self.expect(ops, TokenType::CParen);
 		typ
+	}
+
+	pub fn expect_int_lit(&mut self, ops: &mut Vec<Token>) -> i64 {
+		if ops.is_empty() {
+			self.add_error("Expected identifier but got nothing".into()).exit(1)
+		}
+		let Token { typ, annot } = ops.remove(0);
+		match typ {
+			| TokenType::IntLit(lit) => lit,
+			| _ => {
+				self.add_error(format!(
+					"{}: Expected int literal but got: {typ}",
+					annot.get_pos()
+				))
+				.exit(1)
+			}
+		}
 	}
 
 	pub fn collect_until(&mut self, ops: &mut Vec<Token>, until: TokenType) -> Vec<Op> {

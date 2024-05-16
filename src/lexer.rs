@@ -92,6 +92,7 @@ pub enum TokenType {
 	BitAnd,
 	Not,
 	Mem,
+	Decla,
 }
 
 impl Display for TokenType {
@@ -156,7 +157,8 @@ impl Display for TokenType {
 			| BitAnd => write!(f, "&&"),
 			| And => write!(f, "&"),
 			| Not => write!(f, "!"),
-			| Mem => write!(f, "Mem"),
+			| Mem => write!(f, "mem"),
+			| Decla => write!(f, "decla"),
 		}
 	}
 }
@@ -393,6 +395,7 @@ impl Iterator for Lexer {
 				| "&" => BitAnd,
 				| "!" => Not,
 				| "mem" => Mem,
+				| "decla" => Decla,
 				| lit => {
 					match self.lex_number(lit) {
 						| Ok(Some(typ)) => return Some(typ.clone()),

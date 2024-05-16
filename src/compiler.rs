@@ -68,9 +68,11 @@ argc: dq 0
 argv: dq 0
 true_str: db 'true', 10, 0
 false_str: db 'false', 10, 0
+";
 
+const ASM_BSS: &str = "
 section .bss
-free_mem: resb 1024
+MEM_BUILTIN_FREE_: resb 1024
 ";
 //#endregion
 
@@ -189,6 +191,10 @@ impl Program {
 			buf.write_all(
 				format!("STR_LIT_{}: db `{}`, 0\n", idx, escape_string(lit)).as_bytes(),
 			)?;
+		}
+		buf.write_all(ASM_BSS.as_bytes())?;
+		for (name, size) in self.memory_regions.iter() {
+			buf.write_all(format!("MEM_{name}: resb {size}\n").as_bytes())?;
 		}
 		Ok(())
 	}
@@ -580,7 +586,12 @@ impl Op {
 					.into()
 			}
 			| Not => ";Not\n\tnot \tqword[rsp]\n".into(),
-			| Mem => "push free_mem\n".into(),
+			| Mem(name) => {
+				match name {
+					| Some(name) => format!("push MEM_{name}\n"),
+					| None => "push MEM_BUILTIN_FREE_\n".into(),
+				}
+			}
 			| Nop => unreachable!(),
 		}
 	}

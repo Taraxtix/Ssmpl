@@ -54,7 +54,7 @@ fn simulate_syscall(syscode: &usize) -> Option<i64> {
 	}
 }
 
-const MEM_LENGTH: usize = 1024;
+const MEM_LENGTH: usize = 256 * 1024;
 
 impl Program {
 	fn find_op_by_label(&self, label: &i64, op: &str) -> Option<(usize, &Op)> {
@@ -119,18 +119,24 @@ impl Program {
 		let mut labels_map: HashMap<i64, (usize, usize)> = HashMap::new(); // label -> (if_idx, while_idx)
 		let mut memory: [u8; MEM_LENGTH] = [0; MEM_LENGTH];
 		let mut strings_ptr: HashMap<String, usize> = HashMap::new();
-		let mut string_end = 0;
+		let mut memory_regions_ptr: HashMap<String, usize> = HashMap::new();
+		let mut mem_free_ptr = 0;
 
 		for lit in self.strings.iter() {
-			strings_ptr.insert(lit.clone(), string_end);
+			strings_ptr.insert(lit.clone(), mem_free_ptr);
 			for byte in lit.as_bytes() {
-				if string_end >= MEM_LENGTH {
+				if mem_free_ptr >= MEM_LENGTH {
 					self.add_error("Not enough memory for strings allocation".into())
 						.exit(1);
 				}
-				memory[string_end] = *byte;
-				string_end += 1;
+				memory[mem_free_ptr] = *byte;
+				mem_free_ptr += 1;
 			}
+		}
+
+		for (name, size) in self.memory_regions.iter() {
+			memory_regions_ptr.insert(name.clone(), mem_free_ptr);
+			mem_free_ptr += *size as usize;
 		}
 
 		while ip < self.ops.len() {
@@ -546,7 +552,16 @@ impl Program {
 						| Data::Ptr(v) => stack.push(Data::Ptr(!v)),
 					}
 				}
-				| Mem => stack.push(Data::Ptr(string_end as i64)),
+				| Mem(name) => {
+					match name {
+						| Some(name) => {
+							stack.push(Data::Ptr(
+								*memory_regions_ptr.get(name).unwrap() as i64
+							))
+						}
+						| None => stack.push(Data::Ptr(mem_free_ptr as i64)),
+					}
+				}
 				| Nop => unreachable!(),
 			}
 			ip += 1;

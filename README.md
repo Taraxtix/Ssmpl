@@ -376,8 +376,15 @@ let a = pop();
 push(a >> b);
 ```
 
-### --Free Memory--
+### --Memory Access--
+
+#### --Free Memory--
 
 Ssmpl has 1024 bytes of free memory which you can do whatever you want with.
 
 `mem` pushes the pointer to the start of the free memory.
+
+#### --Named Memory--
+
+`decla NAME SIZE` declares a memory region with named NAME of size SIZE.
+`mem(NAME)` pushes the pointer to the start of the named memory region.

@@ -565,7 +565,7 @@ impl Program {
 						self.wrong_arg(&[None], debug_op, stack.clone())
 					}
 				}
-				| Mem => stack.push(annot.clone().with_type(Type::Ptr)),
+				| Mem(_) => stack.push(annot.clone().with_type(Type::Ptr)),
 				| Nop => unreachable!(),
 			}
 		});
@@ -582,7 +582,12 @@ impl Program {
 				Stack::from_vec(stack)
 			));
 		}
-		Program { ops, reporter: self.reporter, strings: self.strings }
+		Program {
+			ops,
+			reporter: self.reporter,
+			strings: self.strings,
+			memory_regions: self.memory_regions,
+		}
 	}
 
 	fn wrong_arg(
