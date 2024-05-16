@@ -6,7 +6,11 @@ mod report;
 mod simulator;
 mod type_checker;
 
-use std::{env::args, path::Path, process::Command};
+use std::{
+	env::args,
+	path::Path,
+	process::{exit, Command},
+};
 
 use lexer::Lexer;
 use report::{Level, Reporter};
@@ -42,6 +46,7 @@ struct Cli<S: Into<String>> {
 	help:         bool,
 	rounding:     bool,
 	run:          bool,
+	level:        Level,
 }
 
 fn usage(program_path: &String) -> String {
@@ -62,6 +67,8 @@ fn usage(program_path: &String) -> String {
 		+ "		   	     As no effect in simulation (`sim`) mode.\n"
 		+ "    --rounding: Rounds double values for dumping.\n"
 		+ "		   			   As no effect in simulation (`sim`) mode.\n"
+		+ "    --log <level>: Set the log level.\n"
+		+ "		   			  Possible values are: Info(as no effect), Warning, Error\n"
 }
 
 fn retrieve_cli(reporter: &mut report::Reporter) -> Cli<String> {
@@ -78,47 +85,76 @@ fn retrieve_cli(reporter: &mut report::Reporter) -> Cli<String> {
 	});
 	let input_path = args.pop().map(|str| str.to_string()).unwrap_or("".to_string());
 
-	let (output_path, debug, help, rounding, run) = retrieve_options(&mut args, reporter);
-	Cli { program_path, input_path, mode, output_path, debug, help, rounding, run }
+	let (output_path, debug, help, rounding, run, level) =
+		retrieve_options(&mut args, reporter);
+	Cli { program_path, input_path, mode, output_path, debug, help, rounding, run, level }
 }
 
 fn retrieve_options(
 	args: &mut Vec<String>,
 	reporter: &mut report::Reporter,
-) -> (String, bool, bool, bool, bool) {
+) -> (String, bool, bool, bool, bool, Level) {
 	let mut output_path = "a.out".to_string();
 	let mut debug = false;
 	let mut help = false;
 	let mut rounding = false;
 	let mut run = false;
+	let mut level = Level::Info;
 	while !args.is_empty() {
 		match args.pop().unwrap().as_str() {
 			| "-o" => {
 				output_path = args.pop().unwrap_or_else(|| {
-					reporter.add_error(
-						"-o option requires a path to be specified".to_string(),
-					);
-					"a.out".to_string()
+					reporter
+						.add_error(
+							"-o option requires a path to be specified".to_string(),
+						)
+						.exit(1)
 				})
 			}
 			| "-d" | "--debug" => debug = true,
 			| "-h" | "--help" => help = true,
 			| "--rounding" => rounding = true,
 			| "-r" | "--run" => run = true,
+			| "--log" => {
+				let level_str = args.pop().unwrap_or_else(|| {
+					reporter.add_error(
+						"--log option requires a level to be specified".to_string(),
+					);
+					"Info".to_string()
+				});
+				level = match level_str.as_str() {
+					| "Info" => Level::Info,
+					| "Warning" => Level::Warning,
+					| "Error" => Level::Error,
+					| _ => {
+						reporter.add_error(
+							format!(
+								"Unknown log level: {level_str}\nPossible values: Info, \
+								 Warning, Error"
+							)
+							.to_string(),
+						);
+						Level::Info
+					}
+				}
+			}
 			| other => {
 				reporter.add_error(format!("Unknown option: {}", other));
 			}
 		}
 	}
-	(output_path, debug, help, rounding, run)
+	(output_path, debug, help, rounding, run, level)
 }
 fn main() {
 	let mut reporter = Reporter::new(Level::Info);
 	let cli = retrieve_cli(&mut reporter);
 
+	reporter.min_level = cli.clone().level;
+
 	if cli.help {
 		println!("{}", usage(&cli.program_path));
-		reporter.exit_if(Level::Error, 0);
+		reporter.exit_if(Level::Error, 1);
+		exit(0)
 	}
 
 	if Path::new(&cli.output_path).file_name().is_none() {

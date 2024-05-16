@@ -32,9 +32,9 @@ impl Report {
 }
 
 pub struct Reporter {
-	stdout:    StandardStream,
-	min_level: Level,
-	reports:   Vec<Report>,
+	stdout:        StandardStream,
+	pub min_level: Level,
+	reports:       Vec<Report>,
 }
 
 impl Clone for Reporter {
