@@ -30,6 +30,11 @@ Some types can implicitly be casted to other types at compiled time.
 With explicit casting you can cast any type to any other type.
 Casting to `bool` alter the bits of the value while any other cast only affect the behavior of future operations.
 
+### --Size Arguments--
+
+Some operations can take a size argument marked as `SIZE` in the documentation.
+Those size arguments can be either a positive integer literal or a macro consisting of a single positive integer literal.
+
 ### --Comments--
 
 Comments will use `//` for line comments and `/*` and `*/` for block comments as a delimiter.
@@ -134,11 +139,11 @@ push(a - 1);
 
 #### --Drop--
 
-`drop(X)` Where `X` is a positive integer (pops X times from the stack)
-If no X is provide (`drop`), it is equivalent to `drop1`
+`drop(SIZE)` (pops `SIZE` times from the stack)
+If no `SIZE` is provide (`drop`), it is equivalent to `drop1`
 
 ```rust
-for _ in 0..X{
+for _ in 0..SIZE{
     pop();
 }
 ```
@@ -156,21 +161,21 @@ push(b);
 
 #### --Over--
 
-`over(X)` Where `X` is a positive integer (push a copy of the (X+1)nth element of the stack)
-If no X is provide (`over`), it is equivalent to `over1`
+`over(SIZE)` Where `SIZE` is a positive integer (push a copy of the `SIZE+1`nth element of the stack)
+If no `SIZE` is provide (`over`), it is equivalent to `over1`
 
 ```rust
-let a = stack[X+1];
+let a = stack[SIZE+1];
 push(a);
 ```
 
 #### --Dup--
 
-`dup(X)` Where `X` is a positive integer (push a copy of the X firsts elements of the stack (in the same order))
+`dup(SIZE)` Where `SIZE` is a positive integer (push a copy of the `SIZE` firsts elements of the stack (in the same order))
 
 ```rust
-for _ in 0..X{
-    push(stack[X]);
+for _ in 0..SIZE{
+    push(stack[SIZE]);
 }
 ```
 

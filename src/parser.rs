@@ -387,6 +387,31 @@ impl Parser {
 		let Token { typ, annot } = ops.remove(0);
 		let arg = match typ {
 			| TokenType::IntLit(arg) => arg,
+			| TokenType::Id(id) => {
+				match self.macros.get(&id) {
+					| Some(ops) => {
+						match ops.as_slice() {
+							| [Op { typ: OpType::PushI(arg), .. }] => *arg,
+							| _ => {
+								self.add_error(format!(
+									"{}: Size argument used an invalid macro: \
+									 {id}\nSize argument can only use macros consisting \
+									 of a single integer literal",
+									annot.get_pos()
+								))
+								.exit(1)
+							}
+						}
+					}
+					| None => {
+						self.add_error(format!(
+							"{}: Size argument used an undefined macro: {id}",
+							annot.get_pos()
+						))
+						.exit(1)
+					}
+				}
+			}
 			| _ => {
 				self.add_error(format!(
 					"{}: Expected size argument but got: {typ}",
@@ -483,10 +508,35 @@ impl Parser {
 		}
 		let Token { typ, annot } = ops.remove(0);
 		match typ {
-			| TokenType::IntLit(lit) => lit,
+			| TokenType::IntLit(arg) => arg,
+			| TokenType::Id(id) => {
+				match self.macros.get(&id) {
+					| Some(ops) => {
+						match ops.as_slice() {
+							| [Op { typ: OpType::PushI(arg), .. }] => *arg,
+							| _ => {
+								self.add_error(format!(
+									"{}: Size argument used an invalid macro: \
+									 {id}\nSize argument can only use macros consisting \
+									 of a single integer literal",
+									annot.get_pos()
+								))
+								.exit(1)
+							}
+						}
+					}
+					| None => {
+						self.add_error(format!(
+							"{}: Size argument used an undefined macro: {id}",
+							annot.get_pos()
+						))
+						.exit(1)
+					}
+				}
+			}
 			| _ => {
 				self.add_error(format!(
-					"{}: Expected int literal but got: {typ}",
+					"{}: Expected size argument but got: {typ}",
 					annot.get_pos()
 				))
 				.exit(1)
