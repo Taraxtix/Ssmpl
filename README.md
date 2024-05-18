@@ -12,6 +12,13 @@ Those goals will surely change during the project.
 - [ ] Turing complete
 - [ ] Self-Hosted
 
+## Quick Start
+
+First clone the repository, Then you'll can compile the compiler using one of the following commands.
+
+`make release` while compile the compiler as release and add a link to the current directory named `ssmpl`
+`make` or `make debug` will provide a debug version of the compiler (Also add a link to the current directory)
+
 ## Documentation
 
 ### Implicit casting
