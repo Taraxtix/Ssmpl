@@ -587,6 +587,7 @@ impl Program {
 			reporter: self.reporter,
 			strings: self.strings,
 			memory_regions: self.memory_regions,
+			memory_regions_order: self.memory_regions_order,
 		}
 	}
 

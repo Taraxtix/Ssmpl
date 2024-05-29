@@ -149,19 +149,21 @@ impl Display for Op {
 
 #[derive(Clone)]
 pub struct Program {
-	pub ops:            Vec<Op>,
-	pub reporter:       Reporter,
-	pub strings:        Vec<String>,
-	pub memory_regions: HashMap<String, i64>,
+	pub ops:                  Vec<Op>,
+	pub reporter:             Reporter,
+	pub strings:              Vec<String>,
+	pub memory_regions:       HashMap<String, i64>,
+	pub memory_regions_order: Vec<String>,
 }
 
 impl Program {
 	pub fn new(parser: Parser) -> Self {
 		Self {
-			ops:            parser.ops,
-			reporter:       parser.reporter,
-			strings:        parser.strings,
-			memory_regions: parser.memory_regions,
+			ops:                  parser.ops,
+			reporter:             parser.reporter,
+			strings:              parser.strings,
+			memory_regions:       parser.memory_regions,
+			memory_regions_order: parser.memory_regions_order,
 		}
 	}
 
@@ -180,24 +182,26 @@ impl Program {
 
 #[derive(Clone)]
 pub struct Parser {
-	pub reporter:       Reporter,
-	pub ops:            Vec<Op>,
-	pub macros:         HashMap<String, Vec<Op>>,
-	pub strings:        Vec<String>,
-	pub memory_regions: HashMap<String, i64>,
-	included:           Vec<String>,
+	pub reporter:             Reporter,
+	pub ops:                  Vec<Op>,
+	pub macros:               HashMap<String, Vec<Op>>,
+	pub strings:              Vec<String>,
+	pub memory_regions:       HashMap<String, i64>,
+	pub memory_regions_order: Vec<String>,
+	included:                 Vec<String>,
 }
 
 impl Parser {
 	pub fn new(lexer: Lexer) -> Self {
 		let mut ops = lexer.clone().collect::<Vec<_>>();
 		let mut itself = Self {
-			reporter:       lexer.reporter,
-			strings:        lexer.strings,
-			ops:            vec![],
-			macros:         HashMap::new(),
-			memory_regions: HashMap::new(),
-			included:       vec![],
+			reporter:             lexer.reporter,
+			strings:              lexer.strings,
+			ops:                  vec![],
+			macros:               HashMap::new(),
+			memory_regions:       HashMap::new(),
+			memory_regions_order: vec![],
+			included:             vec![],
 		};
 		while !ops.is_empty() {
 			for op in itself.ops_from_first_token(&mut ops) {
@@ -320,6 +324,7 @@ impl Parser {
 				}
 
 				self.included.extend(parsed_include.included);
+				self.memory_regions_order.extend(parsed_include.memory_regions_order);
 				parsed_include.ops
 			}
 			| T::Cast => vec![Op { typ: O::Cast(self.expect_type_arg(ops)), annot }],
@@ -352,6 +357,7 @@ impl Parser {
 					))
 					.exit(1);
 				}
+				self.memory_regions_order.push(name.clone());
 				self.memory_regions.insert(name, size);
 				self.ops_from_first_token(ops)
 			}

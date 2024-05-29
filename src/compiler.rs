@@ -193,7 +193,8 @@ impl Program {
 			)?;
 		}
 		buf.write_all(ASM_BSS.as_bytes())?;
-		for (name, size) in self.memory_regions.iter() {
+		for name in self.memory_regions_order.iter() {
+			let size = self.memory_regions.get(name).unwrap();
 			buf.write_all(format!("MEM_{name}: resb {size}\n").as_bytes())?;
 		}
 		Ok(())
