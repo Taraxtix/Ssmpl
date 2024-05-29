@@ -1,0 +1,39 @@
+include "stdlib/io.ssmpl"
+
+macro N { 100 }
+decla tape N
+decla cpt 8
+
+macro print_tape{
+	0 while dup N != do
+		if mem(tape) over + <|8 cast(Bool) then
+			'#' putc
+		else
+			' ' putc
+		end
+		++
+	end drop
+	'\n' putc
+}
+
+macro modify_tape{
+	mem(tape) dup <|8
+	1 << swap ++ swap over <|8 |
+	1 << swap ++ swap over <|8 |
+	3 while dup N ++ != do
+		swap 110 over >> 1 &
+		over(3) -- swap |>8
+		swap
+		mem(cpt) swap |>64
+		1 << 6 & swap ++ swap over <|8 |
+		mem(cpt) <|64
+		++
+	end drop(3)
+}
+
+mem(tape) N + -- 1 |>8
+N while dup cast(Bool) do
+	print_tape
+	modify_tape
+	--
+end drop

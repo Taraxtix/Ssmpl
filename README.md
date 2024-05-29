@@ -9,7 +9,7 @@ Those goals will surely change during the project.
 - [x] Simulated
 - [x] Compiled
 - [x] Statically typed (with compilation time type checking)
-- [ ] Turing complete
+- [x] Turing complete (See examples/rule110.ssmpl [[Rule 110](https://en.wikipedia.org/wiki/Rule_110)])
 - [ ] Self-Hosted
 
 ## Quick Start
