@@ -12,5 +12,5 @@ macro print {
 }
 
 macro println {
-	print "\n" print
+	print '\n' putc
 }
