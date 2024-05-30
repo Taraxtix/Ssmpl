@@ -93,6 +93,7 @@ pub enum TokenType {
 	Not,
 	Mem,
 	Decla,
+	SetOver,
 }
 
 impl Display for TokenType {
@@ -159,6 +160,7 @@ impl Display for TokenType {
 			| Not => write!(f, "!"),
 			| Mem => write!(f, "mem"),
 			| Decla => write!(f, "decla"),
+			| SetOver => write!(f, "setOver"),
 		}
 	}
 }
@@ -438,6 +440,7 @@ impl Iterator for Lexer {
 				| "!" => Not,
 				| "mem" => Mem,
 				| "decla" => Decla,
+				| "setOver" => SetOver,
 				| lit => {
 					match self.lex_number(lit) {
 						| Ok(Some(typ)) => return Some(typ.clone()),

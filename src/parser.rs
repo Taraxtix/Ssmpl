@@ -59,6 +59,7 @@ pub enum OpType {
 	Or,
 	Not,
 	Mem(Option<String>),
+	SetOver(i64),
 }
 
 #[derive(Clone)]
@@ -73,7 +74,8 @@ impl Op {
 		match self.typ {
 			| Drop(..) | Over(..) | Dup(..) | Then(..) | Else(..) | End(..)
 			| While(..) | Do(..) | PushI(..) | PushF(..) | PushB(..) | Nop | If(..)
-			| Cast(_) | PushStr(..) | Syscall(..) | Argc | Argv | Mem(_) => unreachable!(),
+			| SetOver(_) | Cast(_) | PushStr(..) | Syscall(..) | Argc | Argv
+			| Mem(_) => unreachable!(),
 			| ShiftR | ShiftL => &["I64", "_"],
 			| Not | Increment(_) | Decrement(_) | Dump(_) => &["_"],
 			| Swap | Mod(..) | Add(..) | Sub(..) | Mul(..) | Div(..) | Eq(..) | And
@@ -137,6 +139,7 @@ impl Display for OpType {
 			| BitAnd => write!(f, "BitAnd"),
 			| BitOr => write!(f, "BitOr"),
 			| Mem(_) => write!(f, "Mem"),
+			| SetOver(size) => write!(f, "SetOver({size})"),
 		}
 	}
 }
@@ -360,6 +363,9 @@ impl Parser {
 				self.memory_regions_order.push(name.clone());
 				self.memory_regions.insert(name, size);
 				self.ops_from_first_token(ops)
+			}
+			| T::SetOver => {
+				vec![Op { typ: O::SetOver(self.expect_optional_size_arg(ops)), annot }]
 			}
 		}
 	}

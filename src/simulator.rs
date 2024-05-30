@@ -562,6 +562,12 @@ impl Program {
 						| None => stack.push(Data::Ptr(mem_free_ptr as i64)),
 					}
 				}
+				| SetOver(size) => {
+					let set = stack.pop().unwrap();
+					let index = stack.len() - *size as usize;
+					let val = stack.get_mut(index).unwrap();
+					*val = set;
+				}
 				| Nop => unreachable!(),
 			}
 			ip += 1;

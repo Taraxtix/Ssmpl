@@ -176,6 +176,10 @@ let a = stack[SIZE+1];
 push(a);
 ```
 
+#### --SetOver--
+
+`setOver(SIZE)` Where `SIZE` is a positive integer (set the `SIZE+1`nth element of the stack to the top of the stack)
+
 #### --Dup--
 
 `dup(SIZE)` Where `SIZE` is a positive integer (push a copy of the `SIZE` firsts elements of the stack (in the same order))

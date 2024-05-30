@@ -593,6 +593,12 @@ impl Op {
 					| None => "push MEM_BUILTIN_FREE_\n".into(),
 				}
 			}
+			| SetOver(size) => {
+				format!(
+					";setOver({size})\n\tpop \t rax\n\tmov \t qword[rsp + {}], rax\n",
+					(size - 1) * 8
+				)
+			}
 			| Nop => unreachable!(),
 		}
 	}

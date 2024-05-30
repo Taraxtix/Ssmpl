@@ -567,6 +567,30 @@ impl Program {
 				}
 				| Mem(_) => stack.push(annot.clone().with_type(Type::Ptr)),
 				| Nop => unreachable!(),
+				| SetOver(size) => {
+					let set_type = *stack
+						.pop()
+						.unwrap_or_else(|| {
+							self.add_error(format!(
+								"{}: Expected a value on top of the stack to set\n",
+								annot.get_pos()
+							))
+							.exit(1)
+						})
+						.get_type()
+						.unwrap();
+					if stack.len() < *size as usize {
+						self.add_error(format!(
+							"{}: Not enough values on the stack to set over {size} \
+							 element\n",
+							annot.get_pos()
+						))
+						.exit(1);
+					}
+					let index = stack.len() - *size as usize;
+					let val = stack.get_mut(index).unwrap();
+					*val = annot.clone().with_type(set_type);
+				}
 			}
 		});
 
