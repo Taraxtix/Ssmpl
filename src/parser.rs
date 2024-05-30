@@ -68,24 +68,6 @@ pub struct Op {
 	pub annot: Annotation,
 }
 
-impl Op {
-	pub fn expected_args(&self) -> &[&str] {
-		use OpType::*;
-		match self.typ {
-			| Drop(..) | Over(..) | Dup(..) | Then(..) | Else(..) | End(..)
-			| While(..) | Do(..) | PushI(..) | PushF(..) | PushB(..) | Nop | If(..)
-			| SetOver(_) | Cast(_) | PushStr(..) | Syscall(..) | Argc | Argv
-			| Mem(_) => unreachable!(),
-			| ShiftR | ShiftL => &["I64", "_"],
-			| Not | Increment(_) | Decrement(_) | Dump(_) => &["_"],
-			| Swap | Mod(..) | Add(..) | Sub(..) | Mul(..) | Div(..) | Eq(..) | And
-			| Or | Neq(..) | Lt(..) | Gt(..) | Lte(..) | BitAnd | BitOr | Gte(..) => &["_", "_"],
-			| Store8 | Store16 | Store32 | Store64 => &["Ptr", "_"],
-			| Load8 | Load16 | Load32 | Load64 => &["Ptr"],
-		}
-	}
-}
-
 impl Display for OpType {
 	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
 		use OpType::*;

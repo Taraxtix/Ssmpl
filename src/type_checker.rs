@@ -32,6 +32,61 @@ impl PartialEq for Stack {
 	fn eq(&self, other: &Self) -> bool { self.stack == other.stack }
 }
 
+impl Op {
+	pub fn required_stack_len(&self) -> usize {
+		match self.typ {
+			| OpType::Nop
+			| OpType::Argc
+			| OpType::Argv
+			| OpType::PushI(_)
+			| OpType::PushF(_)
+			| OpType::PushStr(_)
+			| OpType::PushB(_)
+			| OpType::If(_)
+			| OpType::Else(_)
+			| OpType::End(..)
+			| OpType::While(_)
+			| OpType::Mem(_) => 0,
+			| OpType::Load8
+			| OpType::Load16
+			| OpType::Load32
+			| OpType::Load64
+			| OpType::Increment(_)
+			| OpType::Decrement(_)
+			| OpType::Cast(_)
+			| OpType::Not
+			| OpType::Then(..)
+			| OpType::Do(_)
+			| OpType::Dump(_) => 1,
+			| OpType::Store8
+			| OpType::Store16
+			| OpType::Store32
+			| OpType::Store64
+			| OpType::Eq(..)
+			| OpType::Neq(..)
+			| OpType::Lt(..)
+			| OpType::Gt(..)
+			| OpType::Lte(..)
+			| OpType::Gte(..)
+			| OpType::Add(..)
+			| OpType::Sub(..)
+			| OpType::Mul(..)
+			| OpType::Div(..)
+			| OpType::Mod(..)
+			| OpType::ShiftR
+			| OpType::ShiftL
+			| OpType::BitAnd
+			| OpType::And
+			| OpType::BitOr
+			| OpType::Or
+			| OpType::Swap => 2,
+			| OpType::SetOver(size) | OpType::Over(size) => size as usize + 1,
+			| OpType::Syscall(_, size) => size,
+			| OpType::Drop(size) | OpType::Dup(size) => size as usize,
+		}
+	}
+}
+
 impl Program {
 	const ALLOWED_IMPLICIT_CAST: [(Type, Type); 6] = [
 		(Type::I64, Type::F64),
@@ -53,9 +108,10 @@ impl Program {
 		use OpType::*;
 
 		ops.iter_mut().for_each(|op| {
-			let debug_op = op.clone();
+			self.check_args(op, &stack);
 			let Op { typ, annot } = op;
 			match typ {
+				| Nop => unreachable!(),
 				| PushI(_) => {
 					annot.set_type(Type::I64);
 					stack.push(annot.clone());
@@ -69,151 +125,67 @@ impl Program {
 					stack.push(annot.clone());
 				}
 				| PushStr(_) => stack.push(annot.clone().with_type(Type::Ptr)),
-				| Dump(typ) => {
-					match stack.pop() {
-						| Some(a) => *typ = *a.get_type().unwrap(),
-						| None => {
-							self.add_error(format!(
-								"{}: `Dump` cannot be called on an empty stack",
-								annot.get_pos()
-							))
-							.exit(1)
-						}
-					}
-				}
+				| Dump(typ) => *typ = *stack.pop().unwrap().get_type(),
 				| Add(type1, type2) | Sub(type1, type2) => {
-					match (stack.pop(), stack.pop()) {
-						| (Some(a), Some(b)) => {
-							let a_typ = a.get_type().unwrap();
-							let b_typ = b.get_type().unwrap();
-							if a_typ == &Type::F64 || b_typ == &Type::F64 {
-								self.check_implicit_conversion(&a, &Type::F64);
-								self.check_implicit_conversion(&b, &Type::F64);
-								stack.push(annot.clone().with_type(Type::F64));
-							} else if a_typ == &Type::Ptr {
-								self.check_implicit_conversion(&b, &Type::I64);
-								stack.push(annot.clone().with_type(Type::Ptr));
-							} else if b_typ == &Type::Ptr {
-								self.check_implicit_conversion(&a, &Type::I64);
-								stack.push(annot.clone().with_type(Type::Ptr));
-							} else {
-								self.check_implicit_conversion(&a, &Type::I64);
-								self.check_implicit_conversion(&b, &Type::I64);
-								stack.push(annot.clone().with_type(Type::I64));
-							}
-							*type1 = *a_typ;
-							*type2 = *b_typ;
-						}
-						| (a, b) => self.wrong_arg(&[a, b], debug_op, stack.clone()),
+					let a_typ = *stack.pop().unwrap().get_type();
+					let b_typ = *stack.pop().unwrap().get_type();
+					if a_typ == Type::F64 || b_typ == Type::F64 {
+						stack.push(annot.clone().with_type(Type::F64));
+					} else if a_typ == Type::Ptr || b_typ == Type::Ptr {
+						stack.push(annot.clone().with_type(Type::Ptr));
+					} else {
+						stack.push(annot.clone().with_type(Type::I64));
 					}
+					*type1 = a_typ;
+					*type2 = b_typ;
 				}
 				| Mul(type1, type2) | Div(type1, type2) => {
-					match (stack.pop(), stack.pop()) {
-						| (Some(a), Some(b)) => {
-							let a_typ = a.get_type().unwrap();
-							let b_typ = b.get_type().unwrap();
-							if a_typ == &Type::F64 || b_typ == &Type::F64 {
-								self.check_implicit_conversion(&a, &Type::F64);
-								self.check_implicit_conversion(&b, &Type::F64);
-								stack.push(annot.clone().with_type(Type::F64));
-							} else {
-								self.check_implicit_conversion(&a, &Type::I64);
-								self.check_implicit_conversion(&b, &Type::I64);
-								stack.push(annot.clone().with_type(Type::I64));
-							}
-							*type1 = *a_typ;
-							*type2 = *b_typ;
-						}
-						| (a, b) => self.wrong_arg(&[a, b], debug_op, stack.clone()),
+					let a_typ = *stack.pop().unwrap().get_type();
+					let b_typ = *stack.pop().unwrap().get_type();
+					if a_typ == Type::F64 || b_typ == Type::F64 {
+						stack.push(annot.clone().with_type(Type::F64));
+					} else {
+						stack.push(annot.clone().with_type(Type::I64));
 					}
+					*type1 = a_typ;
+					*type2 = b_typ;
 				}
 				| Mod(type1, type2) => {
-					match (stack.pop(), stack.pop()) {
-						| (Some(a), Some(b)) => {
-							let a_typ = a.get_type().unwrap();
-							let b_typ = b.get_type().unwrap();
-							self.check_implicit_conversion(&a, &Type::I64);
-							self.check_implicit_conversion(&b, &Type::I64);
-							*type1 = *a_typ;
-							*type2 = *b_typ;
-							stack.push(annot.clone().with_type(Type::I64));
-						}
-						| (a, b) => self.wrong_arg(&[a, b], debug_op, stack.clone()),
-					}
+					*type1 = *stack.pop().unwrap().get_type();
+					*type2 = *stack.pop().unwrap().get_type();
+					stack.push(annot.clone().with_type(Type::I64));
 				}
 				| Increment(typ) | Decrement(typ) => {
-					match stack.pop() {
-						| Some(a) => {
-							match a.get_type().unwrap() {
-								| Type::F64 => {
-									stack.push(annot.clone().with_type(Type::F64));
-									*typ = Type::F64
-								}
-								| Type::Ptr => {
-									stack.push(annot.clone().with_type(Type::Ptr));
-									*typ = Type::Ptr
-								}
-								| a_typ => {
-									self.check_implicit_conversion(&a, &Type::I64);
-									stack.push(annot.clone().with_type(Type::I64));
-									*typ = *a_typ
-								}
-							}
-						}
-						| None => self.wrong_arg(&[None], debug_op, stack.clone()),
+					let a_typ = *stack.pop().unwrap().get_type();
+					if a_typ != Type::F64 && a_typ != Type::Ptr {
+						stack.push(annot.clone().with_type(Type::I64));
+					} else {
+						stack.push(annot.clone().with_type(a_typ));
 					}
+					*typ = a_typ;
 				}
 				| Drop(n) => {
-					if stack.len() < *n as usize {
-						self.add_error(format!(
-							"Cannot drop more elements than there are in the stack.\n \
-							 Tried to drop {} elements, but there's only {} available \
-							 on the stack",
-							n,
-							stack.len()
-						))
-						.exit(1);
-					}
 					for _ in 0..*n {
 						let _ = stack.pop();
 					}
 				}
 				| Swap => {
-					match (stack.pop(), stack.pop()) {
-						| (Some(a), Some(b)) => {
-							stack.push(a);
-							stack.push(b);
-						}
-						| (a, b) => self.wrong_arg(&[a, b], debug_op, stack.clone()),
-					}
+					let a = stack.pop().unwrap();
+					let b = stack.pop().unwrap();
+					stack.push(a);
+					stack.push(b);
 				}
 				| Over(n) => {
-					if stack.len() < *n as usize + 1 {
-						self.add_error(format!(
-							"Cannot get over {} elements because there's only {} \
-							 available on the stack",
-							n,
-							stack.len()
-						))
-						.exit(1);
-					}
-					let typ = *stack[stack.len() - *n as usize - 1].get_type().unwrap();
+					let typ = *stack[stack.len() - *n as usize - 1].get_type();
 					stack.push(annot.clone().with_type(typ));
 				}
 				| Dup(n) => {
-					if stack.len() < *n as usize {
-						self.add_error(format!(
-							"Cannot copy {} element because there's only {} available \
-							 on the stack",
-							n,
-							stack.len()
-						))
-						.exit(1);
-					}
 					for _ in 0..*n {
-						stack.push(annot.clone().with_type(
-							*stack[stack.len() - *n as usize].get_type().unwrap(),
-						));
+						stack.push(
+							annot
+								.clone()
+								.with_type(*stack[stack.len() - *n as usize].get_type()),
+						);
 					}
 				}
 				| If(label_count) => {
@@ -226,21 +198,14 @@ impl Program {
 					if let Some(If(if_label_count)) = cf.pop() {
 						*label_count = *if_label_count;
 						let stack_snapshot = stack_snapshots.last_mut().unwrap();
-						match stack.pop() {
-							| Some(a) => {
-								self.check_implicit_conversion(&a, &Type::Bool);
-								if stack_snapshot.clone() != stack {
-									self.add_error(format!(
-										"{}: Condition between If and Then must only \
-										 add one value to the stack",
-										a.get_pos()
-									))
-									.exit(1);
-								}
-							}
-							| None => {
-								self.wrong_arg(&[None], debug_op, stack_snapshot.clone())
-							}
+						let a = stack.pop().unwrap();
+						if stack_snapshot.clone() != stack {
+							self.add_error(format!(
+								"{}: Condition between If and Then must only add one \
+								 value to the stack",
+								a.get_pos()
+							))
+							.exit(1);
 						}
 						cf.push(typ)
 					} else {
@@ -326,21 +291,14 @@ impl Program {
 					if let Some(While(while_label_count)) = cf.pop() {
 						*label_count = *while_label_count;
 						let stack_snapshot = stack_snapshots.last_mut().unwrap();
-						match stack.pop() {
-							| Some(a) => {
-								self.check_implicit_conversion(&a, &Type::Bool);
-								if stack_snapshot.clone() != stack {
-									self.add_error(format!(
-										"{}: Condition between While and Do must only \
-										 add one value to the stack",
-										a.get_pos()
-									))
-									.exit(1);
-								}
-							}
-							| None => {
-								self.wrong_arg(&[None], debug_op, stack_snapshot.clone())
-							}
+						let a = stack.pop().unwrap();
+						if stack_snapshot.clone() != stack {
+							self.add_error(format!(
+								"{}: Condition between While and Do must only add one \
+								 value to the stack",
+								a.get_pos()
+							))
+							.exit(1);
 						}
 						cf.push(typ)
 					} else {
@@ -351,242 +309,53 @@ impl Program {
 						.exit(1);
 					}
 				}
-				| Eq(type_l, type_r) => {
-					if stack.len() < 2 {
-						self.wrong_arg(&[None, None], debug_op, stack.clone());
-					}
-					let stack1 = stack.pop().unwrap();
-					let stack2 = stack.pop().unwrap();
-					let a_typ = stack1.get_type().unwrap();
-					let b_typ = stack2.get_type().unwrap();
-					if a_typ == b_typ {
-					} else if a_typ == &Type::F64 || b_typ == &Type::F64 {
-						self.check_implicit_conversion(&stack1, &Type::F64);
-						self.check_implicit_conversion(&stack2, &Type::F64);
-					} else {
-						self.check_implicit_conversion(&stack1, &Type::I64);
-						self.check_implicit_conversion(&stack2, &Type::I64);
-					}
-					*type_l = *b_typ;
-					*type_r = *a_typ;
-					stack.push(annot.clone().with_type(Type::Bool))
-				}
-				| Neq(type_l, type_r) => {
-					if stack.len() < 2 {
-						self.wrong_arg(&[None, None], debug_op, stack.clone());
-					}
-					let stack1 = stack.pop().unwrap();
-					let stack2 = stack.pop().unwrap();
-					let a_typ = stack1.get_type().unwrap();
-					let b_typ = stack2.get_type().unwrap();
-					if a_typ == b_typ {
-					} else if a_typ == &Type::F64 || b_typ == &Type::F64 {
-						self.check_implicit_conversion(&stack1, &Type::F64);
-						self.check_implicit_conversion(&stack2, &Type::F64);
-					} else {
-						self.check_implicit_conversion(&stack1, &Type::I64);
-						self.check_implicit_conversion(&stack2, &Type::I64);
-					}
-					*type_l = *b_typ;
-					*type_r = *a_typ;
-					stack.push(annot.clone().with_type(Type::Bool))
-				}
-				| Lt(type_l, type_r) => {
-					if stack.len() < 2 {
-						self.wrong_arg(&[None, None], debug_op, stack.clone());
-					}
-					let stack1 = stack.pop().unwrap();
-					let stack2 = stack.pop().unwrap();
-					let a_typ = stack1.get_type().unwrap();
-					let b_typ = stack2.get_type().unwrap();
-					if a_typ == b_typ {
-					} else if a_typ == &Type::F64 || b_typ == &Type::F64 {
-						self.check_implicit_conversion(&stack1, &Type::F64);
-						self.check_implicit_conversion(&stack2, &Type::F64);
-					} else {
-						self.check_implicit_conversion(&stack1, &Type::I64);
-						self.check_implicit_conversion(&stack2, &Type::I64);
-					}
-					*type_l = *b_typ;
-					*type_r = *a_typ;
-					stack.push(annot.clone().with_type(Type::Bool))
-				}
-				| Gt(type_l, type_r) => {
-					if stack.len() < 2 {
-						self.wrong_arg(&[None, None], debug_op, stack.clone());
-					}
-					let stack1 = stack.pop().unwrap();
-					let stack2 = stack.pop().unwrap();
-					let a_typ = stack1.get_type().unwrap();
-					let b_typ = stack2.get_type().unwrap();
-					if a_typ == b_typ {
-					} else if a_typ == &Type::F64 || b_typ == &Type::F64 {
-						self.check_implicit_conversion(&stack1, &Type::F64);
-						self.check_implicit_conversion(&stack2, &Type::F64);
-					} else {
-						self.check_implicit_conversion(&stack1, &Type::I64);
-						self.check_implicit_conversion(&stack2, &Type::I64);
-					}
-					*type_l = *b_typ;
-					*type_r = *a_typ;
-					stack.push(annot.clone().with_type(Type::Bool))
-				}
-				| Lte(type_l, type_r) => {
-					if stack.len() < 2 {
-						self.wrong_arg(&[None, None], debug_op, stack.clone());
-					}
-					let stack1 = stack.pop().unwrap();
-					let stack2 = stack.pop().unwrap();
-					let a_typ = stack1.get_type().unwrap();
-					let b_typ = stack2.get_type().unwrap();
-					if a_typ == b_typ {
-					} else if a_typ == &Type::F64 || b_typ == &Type::F64 {
-						self.check_implicit_conversion(&stack1, &Type::F64);
-						self.check_implicit_conversion(&stack2, &Type::F64);
-					} else {
-						self.check_implicit_conversion(&stack1, &Type::I64);
-						self.check_implicit_conversion(&stack2, &Type::I64);
-					}
-					*type_l = *b_typ;
-					*type_r = *a_typ;
-					stack.push(annot.clone().with_type(Type::Bool))
-				}
+				| Eq(type_l, type_r)
+				| Neq(type_l, type_r)
+				| Lt(type_l, type_r)
+				| Gt(type_l, type_r)
+				| Lte(type_l, type_r)
 				| Gte(type_l, type_r) => {
-					if stack.len() < 2 {
-						self.wrong_arg(&[None, None], debug_op, stack.clone());
-					}
-					let stack1 = stack.pop().unwrap();
-					let stack2 = stack.pop().unwrap();
-					let a_typ = stack1.get_type().unwrap();
-					let b_typ = stack2.get_type().unwrap();
-					if a_typ == b_typ {
-					} else if a_typ == &Type::F64 || b_typ == &Type::F64 {
-						self.check_implicit_conversion(&stack1, &Type::F64);
-						self.check_implicit_conversion(&stack2, &Type::F64);
-					} else {
-						self.check_implicit_conversion(&stack1, &Type::I64);
-						self.check_implicit_conversion(&stack2, &Type::I64);
-					}
-					*type_l = *b_typ;
-					*type_r = *a_typ;
+					let a_typ = *stack.pop().unwrap().get_type();
+					let b_typ = *stack.pop().unwrap().get_type();
+					*type_l = b_typ;
+					*type_r = a_typ;
 					stack.push(annot.clone().with_type(Type::Bool))
 				}
 				| Syscall(_, argc) => {
-					if stack.len() < *argc {
-						self.reporter
-							.add_error(format!(
-								"{}: Wrong number of arguments for syscall: expected \
-								 {}, got {}\n",
-								annot.get_pos(),
-								argc,
-								stack.len(),
-							))
-							.exit(1)
-					} else {
-						for _ in 0..*argc {
-							stack.pop();
-						}
-						stack.push(annot.clone().with_type(Type::I64));
+					for _ in 0..*argc {
+						stack.pop();
 					}
+					stack.push(annot.clone().with_type(Type::I64));
 				}
 				| Argc => stack.push(annot.clone().with_type(Type::I64)),
 				| Argv => stack.push(annot.clone().with_type(Type::Ptr)),
 				| Load8 | Load16 | Load32 | Load64 => {
-					let stack_val = stack.pop();
-					match stack_val.clone() {
-						| Some(a) => {
-							if let Some(Type::Ptr) = a.get_type() {
-								stack.push(annot.clone().with_type(Type::I64));
-							} else {
-								self.wrong_arg(&[stack_val], debug_op, stack.clone())
-							}
-						}
-						| None => self.wrong_arg(&[stack_val], debug_op, stack.clone()),
-					}
+					stack.pop();
+					stack.push(annot.clone().with_type(Type::I64));
 				}
 				| Store8 | Store16 | Store32 | Store64 => {
-					let val = stack.pop();
-					let ptr = stack.pop();
-					match (ptr.clone(), val.clone()) {
-						| (Some(a), Some(_)) => {
-							if !matches!(a.get_type(), Some(Type::Ptr)) {
-								self.wrong_arg(&[ptr, val], debug_op, stack.clone())
-							}
-						}
-						| _ => self.wrong_arg(&[ptr, val], debug_op, stack.clone()),
-					}
+					stack.pop().unwrap();
+					stack.pop().unwrap();
 				}
-				| Cast(typ) => {
-					let stack_val = stack.last_mut().unwrap_or_else(|| {
-						self.add_error(format!(
-							"{}: Expected a value on the stack to cast\n",
-							annot.get_pos()
-						))
-						.exit(1)
-					});
-					stack_val.set_type(*typ);
-				}
+				| Cast(typ) => stack.last_mut().unwrap().set_type(*typ),
 				| ShiftR | ShiftL => {
-					match (stack.pop(), stack.pop()) {
-						| (Some(a), Some(b)) if a.get_type().unwrap() == &Type::I64 => {
-							stack.push(annot.clone().with_type(*b.get_type().unwrap()));
-						}
-						| (a, b) => self.wrong_arg(&[a, b], debug_op, stack.clone()),
-					}
+					stack.pop();
+					let b_typ = *stack.pop().unwrap().get_type();
+					stack.push(annot.clone().with_type(b_typ));
 				}
 				| BitAnd | BitOr => {
-					match (stack.pop(), stack.pop()) {
-						| (Some(a), Some(b)) => {
-							if a.get_type() == b.get_type() {
-								stack.push(
-									annot.clone().with_type(*a.get_type().unwrap()),
-								);
-							} else {
-								self.check_implicit_conversion(&b, &Type::I64);
-								stack.push(annot.clone().with_type(Type::I64));
-							}
-						}
-						| (a, b) => self.wrong_arg(&[a, b], debug_op, stack.clone()),
-					}
+					let a_typ = *stack.pop().unwrap().get_type();
+					stack.pop();
+					stack.push(annot.clone().with_type(a_typ));
 				}
-				| And | Or => {
-					let b = stack.pop();
-					let a = stack.pop();
-					if !(a.is_some() && b.is_some()) {
-						self.wrong_arg(&[a, b], debug_op, stack.clone())
-					}
-					stack.push(annot.clone().with_type(Type::Bool));
-				}
+				| And | Or => stack.push(annot.clone().with_type(Type::Bool)),
 				| Not => {
-					let arg = stack.pop();
-					if let Some(arg) = arg {
-						stack.push(annot.clone().with_type(*arg.get_type().unwrap()));
-					} else {
-						self.wrong_arg(&[None], debug_op, stack.clone())
-					}
+					let arg_typ = *stack.pop().unwrap().get_type();
+					stack.push(annot.clone().with_type(arg_typ));
 				}
 				| Mem(_) => stack.push(annot.clone().with_type(Type::Ptr)),
-				| Nop => unreachable!(),
 				| SetOver(size) => {
-					let set_type = *stack
-						.pop()
-						.unwrap_or_else(|| {
-							self.add_error(format!(
-								"{}: Expected a value on top of the stack to set\n",
-								annot.get_pos()
-							))
-							.exit(1)
-						})
-						.get_type()
-						.unwrap();
-					if stack.len() < *size as usize {
-						self.add_error(format!(
-							"{}: Not enough values on the stack to set over {size} \
-							 element\n",
-							annot.get_pos()
-						))
-						.exit(1);
-					}
+					let set_type = *stack.pop().unwrap().get_type();
 					let index = stack.len() - *size as usize;
 					let val = stack.get_mut(index).unwrap();
 					*val = annot.clone().with_type(set_type);
@@ -615,34 +384,129 @@ impl Program {
 		}
 	}
 
-	fn wrong_arg(
-		&mut self,
-		got: &[Option<Annotation>],
-		op: Op,
-		mut stack: Vec<Annotation>,
-	) -> ! {
-		let annot = op.annot.clone();
-		got.iter().for_each(|ann| stack.push(ann.clone().unwrap_or(annot.no_annot())));
-		let expected = op
-			.expected_args()
-			.iter()
-			.fold(String::new(), |output, str| output + "\t" + str + "\n");
-		self.reporter
-			.add_error(format!(
-				"{}: Not enough arguments for `{}`\nExpected: [\n{}]\nGot: {}",
-				annot.get_pos(),
-				op.typ,
-				expected,
-				Stack::from_vec(stack.clone())
+	#[allow(clippy::ptr_arg)]
+	pub fn check_args(&mut self, op: &Op, stack: &Vec<Annotation>) {
+		if stack.len() < op.required_stack_len() {
+			self.add_error(format!(
+				"{} requires at least{} values on the stack but got {}",
+				op,
+				op.required_stack_len(),
+				stack.len()
 			))
-			.exit(1)
+			.exit(1);
+		}
+		let Op { typ, .. } = op;
+		let mut cloned_stack = stack.clone();
+		cloned_stack.reverse();
+		let arg = cloned_stack.as_slice();
+		match typ {
+			| _ if op.required_stack_len() == 0 => (),
+			| OpType::Cast(_)
+			| OpType::Syscall(..)
+			| OpType::Drop(_)
+			| OpType::Over(_)
+			| OpType::SetOver(_)
+			| OpType::Dup(_)
+			| OpType::Swap
+			| OpType::Not
+			| OpType::Dump(_) => (),
+			| OpType::Add(..) | OpType::Sub(..) => {
+				let a_typ = arg[0].get_type();
+				let b_typ = arg[1].get_type();
+				if a_typ == &Type::F64 || b_typ == &Type::F64 {
+					self.check_implicit_conversion(&arg[0], &Type::F64);
+					self.check_implicit_conversion(&arg[1], &Type::F64);
+				} else if a_typ == &Type::Ptr {
+					self.check_implicit_conversion(&arg[1], &Type::I64);
+				} else if b_typ == &Type::Ptr {
+					self.check_implicit_conversion(&arg[0], &Type::I64);
+				} else {
+					self.check_implicit_conversion(&arg[0], &Type::I64);
+					self.check_implicit_conversion(&arg[1], &Type::I64);
+				}
+			}
+			| OpType::Mul(..) | OpType::Div(..) => {
+				let typ = match (arg[0].get_type(), arg[1].get_type()) {
+					| (Type::F64, _) | (_, Type::F64) => Type::F64,
+					| _ => Type::I64,
+				};
+				self.check_implicit_conversion(&arg[0], &typ);
+				self.check_implicit_conversion(&arg[1], &typ);
+			}
+			| OpType::Mod(..) => {
+				self.check_implicit_conversion(&arg[0], &Type::I64);
+				self.check_implicit_conversion(&arg[1], &Type::I64);
+			}
+			| OpType::Increment(_) | OpType::Decrement(_) => {
+				if ![Type::F64, Type::Ptr].contains(arg[0].get_type()) {
+					self.check_implicit_conversion(&arg[0], &Type::I64);
+				}
+			}
+			| OpType::Then(..) | OpType::Do(_) => {
+				self.check_implicit_conversion(&arg[0], &Type::Bool)
+			}
+			| OpType::Eq(..)
+			| OpType::Neq(..)
+			| OpType::Lt(..)
+			| OpType::Gt(..)
+			| OpType::Lte(..)
+			| OpType::Gte(..) => {
+				match (arg[0].get_type(), arg[1].get_type()) {
+					| (a, b) if a == b => (),
+					| (Type::F64, _) | (_, Type::F64) => {
+						self.check_implicit_conversion(&arg[0], &Type::F64);
+						self.check_implicit_conversion(&arg[1], &Type::F64);
+					}
+					| _ => {
+						self.check_implicit_conversion(&arg[0], &Type::I64);
+						self.check_implicit_conversion(&arg[1], &Type::I64);
+					}
+				}
+			}
+			| OpType::Load8 | OpType::Load16 | OpType::Load32 | OpType::Load64 => {
+				if arg[0].get_type() != &Type::Ptr {
+					self.add_error(format!(
+						"{op} Expected a PTR on top of the stack but got {}\n",
+						arg[0]
+					))
+					.exit(1)
+				}
+			}
+			| OpType::Store8 | OpType::Store16 | OpType::Store32 | OpType::Store64 => {
+				if arg[1].get_type() != &Type::Ptr {
+					self.add_error(format!(
+						"{op} Expected a PTR on second position of the stack but got \
+						 {}\n",
+						arg[1]
+					))
+					.exit(1)
+				}
+			}
+			| OpType::ShiftR | OpType::ShiftL => {
+				if arg[0].get_type() != &Type::I64 {
+					self.add_error(format!(
+						"{op} Expected an I64 on top of the stack but got {}\n",
+						arg[0]
+					))
+					.exit(1)
+				}
+			}
+			| OpType::BitAnd | OpType::BitOr => {
+				self.check_implicit_conversion(&arg[1], arg[0].get_type())
+			}
+			| OpType::And | OpType::Or => {
+				self.check_implicit_conversion(&arg[0], &Type::Bool);
+				self.check_implicit_conversion(&arg[1], &Type::Bool);
+			}
+			| _ => unreachable!(),
+		}
 	}
 
 	fn check_implicit_conversion(&mut self, from: &Annotation, to: &Type) {
-		if from.get_type().unwrap() == to {
+		if from.get_type() == to {
 			return;
 		}
-		if !Self::ALLOWED_IMPLICIT_CAST.contains(&(*from.get_type().unwrap(), *to)) {
+		if !Self::ALLOWED_IMPLICIT_CAST.contains(&(*from.get_type(), *to)) {
 			self.add_error(format!(
 				"{}: Attempting to implicitly convert from {from} to {to}",
 				from.get_pos()
@@ -652,7 +516,7 @@ impl Program {
 		self.reporter.add_warning(format!(
 			"{}: Implicit conversion from {} to {}",
 			from.get_pos(),
-			from.get_type().unwrap(),
+			from.get_type(),
 			to
 		));
 	}

@@ -41,34 +41,27 @@ impl Display for Type {
 #[derive(Clone)]
 pub struct Annotation {
 	pos:     Position,
-	pub typ: Option<Type>,
+	pub typ: Type,
 }
 
 impl Annotation {
-	pub fn new(pos: Position) -> Self { Annotation { pos, typ: None } }
+	pub fn new(pos: Position) -> Self { Annotation { pos, typ: Type::I64 } }
 
 	pub fn get_pos(&self) -> &Position { &self.pos }
 
 	pub fn with_type(mut self, typ: Type) -> Self {
-		self.typ = Some(typ);
+		self.typ = typ;
 		self
 	}
 
-	pub fn get_type(&self) -> Option<&Type> { self.typ.as_ref() }
+	pub fn get_type(&self) -> &Type { &self.typ }
 
-	pub fn set_type(&mut self, typ: Type) { self.typ = Some(typ) }
-
-	pub fn no_annot(&self) -> Self { Self { pos: self.pos.clone(), typ: None } }
+	pub fn set_type(&mut self, typ: Type) { self.typ = typ }
 }
 
 impl Display for Annotation {
 	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-		let typ = if let Some(typ) = self.typ {
-			format!("{}", typ)
-		} else {
-			"None".to_string()
-		};
-		write!(f, "{}: {}", self.pos, typ)
+		write!(f, "{}: {}", self.pos, self.typ)
 	}
 }
 
