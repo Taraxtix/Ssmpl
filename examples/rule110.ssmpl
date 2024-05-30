@@ -21,10 +21,9 @@ macro modify_tape{
 	1 << swap ++ swap over <|8 |
 	1 << swap ++ swap over <|8 |
 	3 while dup N ++ != do
-		swap 110 over >> 1 &
-		over(3) -- swap |>8
-		swap
 		mem(cpt) swap |>64
+		110 over >> 1 &
+		over(2) -- swap |>8
 		1 << 6 & swap ++ swap over <|8 |
 		mem(cpt) <|64
 		++
